@@ -1,0 +1,34 @@
+# done/pending per story — bigpowers cockpit
+# Updated: 2026-06-15 (after slice-tasks + e01 verification)
+updated: "2026-06-15"
+
+epics:
+  e01:                       # Installer — verified DONE (v0 in repo)
+    status: done
+    stories: { e01s01: done, e01s02: done, e01s03: done }
+  e02:                       # Dispatcher — next up
+    status: pending
+    stories: { e02s01: pending, e02s02: pending }
+  e03:
+    status: pending
+    stories: { e03s01: pending, e03s02: pending }
+  e04:
+    status: pending
+    stories: { e04s01: pending, e04s02: pending }
+  e05:                       # bts map (Rust) — the one heavy item
+    status: pending
+    stories: { e05s01: pending, e05s02: pending, e05s03: pending }
+  e06:
+    status: pending
+    stories: { e06s01: pending, e06s02: pending }
+  e07:
+    status: backlog
+    stories: { e07s01: backlog }
+
+summary:
+  total_stories: 15
+  done: 3
+  pending: 11
+  backlog: 1
+
+next: e02s01    # kickoff-branch e02/dispatcher -> develop-tdd e02s01

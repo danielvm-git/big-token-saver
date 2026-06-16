@@ -1,0 +1,23 @@
+epic: e04
+title: "Unified verbs with opinionated defaults"
+milestone: m1
+wsjf: 7.0
+status: ready
+summary: "Thin verbs wrapping installed tools: find / src / docs / ai. Each degrades gracefully."
+
+stories:
+  - id: e04s01
+    title: "find verb: rg -> fzf -> bat, with a non-interactive --print mode for tests"
+    tasks:
+      - desc: "bts find --print <pat> returns rg hits without the interactive picker"
+        verify: "bin/bts find --print 'fn ' >/dev/null"
+      - desc: "find degrades gracefully when its tool is absent (points at doctor)"
+        verify: "PATH=/usr/bin bin/bts find --print x 2>&1 | grep -qi doctor"
+
+  - id: e04s02
+    title: "src / docs / ai delegate to the installed upstream tools"
+    tasks:
+      - desc: "bts src delegates to opensrc"
+        verify: "grep -q 'opensrc' bin/bts"
+      - desc: "bts docs uses context7; bts ai launches the agent"
+        verify: "grep -q 'context7' bin/bts && grep -qE 'aider|claude' bin/bts"

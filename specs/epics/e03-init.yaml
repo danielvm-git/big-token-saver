@@ -1,0 +1,21 @@
+epic: e03
+title: "bts init — per-project wiring"
+milestone: m1
+wsjf: 9.0
+status: ready
+summary: "Per-project bootstrap: .bts.toml + .envrc + agent hook, idempotent."
+
+stories:
+  - id: e03s01
+    title: "init scaffolds .bts.toml and .envrc, idempotently"
+    tasks:
+      - desc: "bts init writes .bts.toml and .envrc in an empty dir"
+        verify: "BTS=$PWD/bin/bts; d=$(mktemp -d); (cd \"$d\" && \"$BTS\" init && test -f .bts.toml && test -f .envrc)"
+      - desc: "running bts init twice is idempotent (exit 0 both times)"
+        verify: "BTS=$PWD/bin/bts; d=$(mktemp -d); (cd \"$d\" && \"$BTS\" init >/dev/null && \"$BTS\" init >/dev/null)"
+
+  - id: e03s02
+    title: "Claude Code hook is wired and valid JSON"
+    tasks:
+      - desc: "init writes .claude/settings.json with a PreToolUse hook (shells to installed rtk/sqz — no linking)"
+        verify: "BTS=$PWD/bin/bts; d=$(mktemp -d); (cd \"$d\" && \"$BTS\" init >/dev/null && jq -e '.hooks.PreToolUse' .claude/settings.json >/dev/null)"

@@ -1,0 +1,13 @@
+epic: e07
+title: "More ideas-on-top (demand-driven backlog)"
+milestone: m3
+wsjf: 2.0
+status: backlog
+summary: "Park future unifier ideas; pull only when real daily use creates the demand."
+
+stories:
+  - id: e07s01
+    title: "Backlog — each lands as a small verb, not a new subsystem"
+    tasks:
+      - desc: "shared .bts.toml profiles; `bts compress` shelling the installed sqz; regret-style learning on `bts map` selections"
+        verify: "true   # backlog placeholder — no verify until a item is pulled into a milestone"

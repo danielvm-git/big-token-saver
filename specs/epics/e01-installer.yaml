@@ -1,0 +1,29 @@
+epic: e01
+title: "Toolchain manifest + bootstrap"
+milestone: m0
+wsjf: 15.0
+status: in_progress
+summary: >
+  One command installs the whole set. v0 (mise.toml + install.sh) already in repo;
+  these stories pin the verify gates around it.
+
+stories:
+  - id: e01s01
+    title: "Manifest parses and declares the doctor task"
+    tasks:
+      - desc: "mise.toml is valid TOML and exposes the `doctor` task"
+        verify: "mise trust >/dev/null 2>&1; mise tasks ls | grep -q doctor"
+
+  - id: e01s02
+    title: "Bootstrap script is sound, formatted, idempotent"
+    tasks:
+      - desc: "install.sh passes shellcheck"
+        verify: "shellcheck install.sh"
+      - desc: "install.sh is valid bash and shfmt-clean"
+        verify: "bash -n install.sh && shfmt -d install.sh"
+
+  - id: e01s03
+    title: "Doctor reports each tool present or missing"
+    tasks:
+      - desc: "`mise run doctor` runs and emits ok/MISSING lines"
+        verify: "mise trust >/dev/null 2>&1; mise run doctor | grep -qE 'ok|MISSING'"

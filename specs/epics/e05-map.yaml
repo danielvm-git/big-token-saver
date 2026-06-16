@@ -1,0 +1,35 @@
+epic: e05
+title: "bts map — the owned repo-map capability (Rust)"
+milestone: m2
+wsjf: 5.0
+status: ready
+summary: "The single net-new Rust binary: aider PageRank repo-map + vendored .scm. Tracer-bullet first."
+risks:
+  - "tree-sitter ABI coupling (red team's hardest finding): pin each grammar crate to the vendored .scm vintage; verify with a real query per language, not just compilation. Mismatch = silent empty maps."
+
+stories:
+  - id: e05s01
+    title: "Rust crate skeleton compiles with a CLI"
+    tasks:
+      - desc: "cargo workspace + crates/bts-map builds"
+        verify: "cargo build -p bts-map"
+      - desc: "bts-map --help documents the [budget] arg"
+        verify: "cargo run -q -p bts-map -- --help | grep -qi budget"
+      - desc: "clippy is clean"
+        verify: "cargo clippy -p bts-map -- -D warnings"
+
+  - id: e05s02
+    title: "Tracer bullet: one Rust file -> ranked tags (proves the whole path)"
+    tasks:
+      - desc: "vendor rust-tags.scm (with provenance header) and extract defs/refs from a fixture"
+        verify: "cargo test -p bts-map rust_tags"
+      - desc: "PageRank output is deterministic for a fixed input"
+        verify: "cargo test -p bts-map deterministic"
+
+  - id: e05s03
+    title: "Token budget honored across >=10 languages"
+    tasks:
+      - desc: "output never exceeds the requested token budget"
+        verify: "cargo test -p bts-map budget"
+      - desc: "snapshot map of the fixture repo is stable"
+        verify: "cargo test -p bts-map snapshot"

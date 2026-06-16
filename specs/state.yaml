@@ -1,0 +1,59 @@
+# bigpowers state — big-token-saver
+# Last updated: 2026-06-15 (build-ready after slice-tasks)
+
+session:
+  phase: BUILD             # planning complete; every epic task carries a runnable verify
+  active_epic: e02
+  active_story: e02s01
+  last_skill: slice-tasks
+
+pivot:
+  date: 2026-06-15
+  from: "4-layer token-saving middleware product (orchestrator linking sqz-engine/ELv2 + shelling rtk/opensrc + porting aider)"
+  to:   "single-command toolchain bootstrapper + thin unifier; bts map as the one owned Rust add-on"
+  reason: >
+    A 4-angle red team dismantled the product thesis (no moat; 3 of 4 layers already
+    native/commodity; eroding token value + prompt-cache hazards; ELv2 distribution
+    mislabeling; secret-leaking tee store). The user's real goal was never a product —
+    it was ending the pain of installing a scattered toolchain across 5 package
+    managers. See memory/red-team-findings.md.
+
+decisions:
+  - id: d01
+    text: "Scope = a toolchain bootstrapper + thin unifier for the user's AI-coding workflow. NOT a token-saving product."
+  - id: d02
+    text: "Install upstream from official sources via mise; never bundle or relink. Shipped artifacts contain zero ELv2 code -> no ELv2 obligations."
+    supersedes: "old d02 (ELv2 cargo-feature firewall) — no longer needed; bts does not link sqz at all."
+  - id: d03
+    text: "Stand on mise as the install engine (backends: registry/aqua, npm, pipx, ubi). Do not hand-roll cross-PM installation."
+  - id: d04
+    text: "rtk + sqz install via ubi (GitHub release binaries), NOT crates.io (rtk's crate is a stale v0.1.0 stub; sqz ships binaries)."
+  - id: d05
+    text: "Unifier is shell-first (a ~100-line `bts` dispatcher + verb functions). Rust is used ONLY for `bts map`."
+  - id: d06
+    text: "bts map is the single owned, net-new capability (aider PageRank + .scm queries), Apache-2.0. Pin grammar crates to match the .scm ABI (red team's hardest technical risk)."
+  - id: d07
+    text: "Personal-first, shareable. If published, the installer declares dependencies; it does not contain them."
+
+environment:
+  ready: true
+  git: "initialized on main (2.54.0)"
+  installed: "mise 2026.6.10, shellcheck 0.11.0, shfmt 3.13.1, bats; full runtime toolchain present (mise run doctor: 12/12 ok)"
+
+artifacts:
+  done:
+    - mise.toml             # toolchain manifest (source of truth)
+    - install.sh            # mise bootstrap (shellcheck + shfmt clean)
+    - "specs/epics/*.yaml"  # 7 epic shards, 15 stories, every task has a verify
+    - specs/execution-status.yaml
+  pending:
+    - bin/bts               # shell dispatcher (e02)
+    - "bts init logic"      # per-project wiring (e03)
+    - crates/bts-map/       # the one Rust crate (e05)
+
+handoff: |
+  BUILD-READY. git initialized; mise + shellcheck + shfmt + bats installed.
+  Epic shards sliced into specs/epics/eNN-*.yaml — every task carries a runnable `verify:`.
+  e01 (Installer) is DONE: all three stories' verifies pass (mise run doctor = 12/12 tools ok).
+  Next: kickoff-branch on e02/dispatcher, then develop-tdd e02s01 (bin/bts routing + help/version).
+  bts map (e05) is the only heavy/Rust item; defer until the shell unifier is in daily use.

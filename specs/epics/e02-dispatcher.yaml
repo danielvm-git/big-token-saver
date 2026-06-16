@@ -1,0 +1,27 @@
+epic: e02
+title: "bts dispatcher (shell front door)"
+milestone: m1
+wsjf: 12.0
+status: ready
+summary: "A ~100-line bash `bin/bts`: subcommand routing + setup/doctor wiring. First real build target."
+
+stories:
+  - id: e02s01
+    title: "bts routes subcommands with help and version"
+    tasks:
+      - desc: "bin/bts prints usage on --help"
+        verify: "bin/bts --help | grep -qi usage"
+      - desc: "unknown subcommand exits non-zero"
+        verify: "! bin/bts __nope >/dev/null 2>&1"
+      - desc: "bin/bts passes shellcheck"
+        verify: "shellcheck bin/bts"
+      - desc: "bts --version prints a semver"
+        verify: "bin/bts --version | grep -qE '[0-9]+\\.[0-9]+\\.[0-9]+'"
+
+  - id: e02s02
+    title: "setup and doctor delegate to install.sh / mise"
+    tasks:
+      - desc: "bts doctor runs the mise doctor task"
+        verify: "bin/bts doctor | grep -qE 'ok|MISSING'"
+      - desc: "bts setup references the bootstrap script"
+        verify: "grep -q 'install.sh' bin/bts"

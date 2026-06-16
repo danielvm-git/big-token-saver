@@ -1,0 +1,139 @@
+# bigpowers release plan — big-token-saver (REPLANNED 2026-06-15)
+# Supersedes the prior 4-layer token-saving plan, which a red-team review dismantled.
+# New scope: a single-command toolchain bootstrapper + thin unifier, with `bts map`
+# as the one owned Rust add-on. See specs/state.yaml `pivot` + memory/red-team-findings.
+
+release: "0.1.0"
+goal: >
+  One command installs my whole AI-coding toolchain (across brew/cargo/npm/pipx/ubi),
+  unifies it behind a single `bts` front door with opinionated defaults, and adds one
+  net-new capability (`bts map`). Personal-first, shareable.
+non_goals:
+  - "NOT a token-saving middleware product (no proxy, no command-output interception, no market-moat needed)"
+  - "NOT a bundler — install upstream from official sources, never link/redistribute (esp. sqz/ELv2)"
+  - "NOT a from-scratch install engine — stand on mise"
+target: "personal use immediately; shareable v0.1 in ~4-6 focused sessions"
+binary: bts
+license: "Apache-2.0 (only shipped code is the shell unifier + the bts-map crate)"
+
+principles:
+  - "Install upstream; never bundle. Shipped artifacts carry zero ELv2 obligations."
+  - "Don't reinvent the installer — mise owns version pinning, idempotency, upgrades, uninstall."
+  - "Shell-first for glue; Rust only where there is real computation (bts map)."
+  - "rtk + sqz install via ubi (GitHub releases), NOT crates.io (rtk crate is a v0.1.0 stub)."
+
+milestones:
+  - id: m0
+    name: "Installer"
+    goal: "One command brings the whole set on a fresh machine"
+    epics: [e01]
+  - id: m1
+    name: "Unifier"
+    goal: "One `bts` front door + per-project wiring"
+    epics: [e02, e03, e04]
+  - id: m2
+    name: "Owned capability"
+    goal: "bts map — the repo map, shipped"
+    epics: [e05]
+  - id: m3
+    name: "Share"
+    goal: "Cross-platform + published installer (demand-driven)"
+    epics: [e06, e07]
+
+epics:
+  - id: e01
+    title: "Toolchain manifest + bootstrap"
+    milestone: m0
+    size: S
+    status: in_progress      # v0 already in repo
+    description: >
+      mise.toml manifest (source of truth) listing the full set across registry/npm/
+      pipx/ubi backends; install.sh that installs mise then applies the manifest
+      globally; `bts setup` (wraps it) and `bts doctor` (verify). rtk + sqz via ubi.
+    acceptance: >
+      On a machine without the tools, `bash install.sh` then `mise run doctor` reports
+      every tool present. Re-running is idempotent. Backs up any existing global config.
+    notes: "mise.toml + install.sh drafted in repo root; bts setup/doctor wrappers pending (e02)."
+
+  - id: e02
+    title: "bts dispatcher (shell front door)"
+    milestone: m1
+    size: S
+    status: ready
+    description: >
+      A ~100-line bash `bts` script: subcommand routing, `--help`, `--version`,
+      `bts setup` (-> install.sh), `bts doctor` (-> mise run doctor), and a clean
+      extension point for verbs. Installed onto PATH by install.sh. shellcheck-clean.
+    acceptance: >
+      `bts`, `bts --help`, `bts doctor`, `bts setup` all work; unknown verb prints
+      usage and exits non-zero.
+
+  - id: e03
+    title: "bts init — per-project wiring"
+    milestone: m1
+    size: M
+    status: ready
+    description: >
+      `bts init` bootstraps a project: writes `.bts.toml` (model, token budget) and a
+      direnv `.envrc`, pre-wires the active agent's hooks (Claude Code first; the hook
+      shells out to the installed rtk/sqz binaries — no linking), optionally seeds
+      bigpowers `specs/`. Idempotent.
+    acceptance: >
+      In an empty dir, `bts init` produces .bts.toml + .envrc + a working Claude Code
+      hook; running twice changes nothing; `direnv allow` loads the budget env.
+
+  - id: e04
+    title: "Unified verbs with opinionated defaults"
+    milestone: m1
+    size: M
+    status: ready
+    description: >
+      Thin verbs wrapping installed tools so you stop remembering which is which:
+      `bts find` (rg -> fzf picker -> bat preview), `bts src <pkg>` (opensrc),
+      `bts docs <lib>` (context7), `bts ai` (launch aider / Claude Code with hooks +
+      budget pre-loaded). Each is a shell function delegating to one tool.
+    acceptance: >
+      `bts find <pattern>` opens an interactive picker with preview; `bts src zod`
+      returns cached source; each verb degrades gracefully if its tool is missing
+      (points at `bts doctor`).
+
+  - id: e05
+    title: "bts map — the owned repo-map capability (Rust)"
+    milestone: m2
+    size: L
+    status: ready
+    description: >
+      The single net-new Rust binary. Vendor aider's tree-sitter tag queries (.scm)
+      with correct per-grammar attribution (MIT/Apache mix, not monolithic Apache).
+      petgraph PageRank over the def/ref symbol graph; tiktoken-rs token budgeting.
+      Distribute as `ubi:<you>/big-token-saver` and add to mise.toml. No sqz linking.
+    risks:
+      - "tree-sitter ABI coupling (red team's deepest finding): .scm queries are bound to specific grammar versions. Pin each grammar crate to match the .scm vintage; verify with a real query per language, not just compilation. Mismatch = silent empty maps, no error."
+    acceptance: >
+      `bts map [budget]` is deterministic for a fixed git tree, output <= budget tokens,
+      and produces non-empty ranked maps for >=10 languages (Rust, Python, JS, TS, Go,
+      Java, Ruby, C, C++, Swift). Snapshot test against a fixture repo.
+
+  - id: e06
+    title: "Cross-platform + published installer"
+    milestone: m3
+    size: M
+    status: ready
+    description: >
+      Verify install.sh on Linux; publish the `bts` script + bts-map binary via a
+      curl|bash installer and/or a Homebrew tap; CI builds bts-map for common targets.
+      Demand-driven — only if you (or others) actually use it.
+    acceptance: >
+      `curl ... | bash` on fresh macOS and fresh Linux yields a green `bts doctor`.
+
+  - id: e07
+    title: "More ideas-on-top (demand-driven backlog)"
+    milestone: m3
+    size: S
+    status: backlog
+    description: >
+      Park future unifier ideas here; pull them only when real use creates the pull —
+      e.g. shared `.bts.toml` profiles, a `bts compress` verb shelling the installed sqz,
+      regret-style learning on `bts map` selections. Each lands as a small verb, not a
+      new subsystem.
+    acceptance: "n/a — backlog."

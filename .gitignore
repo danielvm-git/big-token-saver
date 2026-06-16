@@ -1,0 +1,17 @@
+# Rust (when crates/bts-map lands)
+/target
+crates/*/target
+
+# macOS
+.DS_Store
+
+# direnv / mise local overrides
+.direnv/
+.envrc.local
+.mise.local.toml
+
+# editor cruft
+*.swp
+*~
+.idea/
+.vscode/

@@ -1,0 +1,21 @@
+epic: e06
+title: "Cross-platform + published installer"
+milestone: m3
+wsjf: 4.0
+status: ready
+summary: "Demand-driven: CI builds bts-map, curl|bash installer, Linux verification."
+
+stories:
+  - id: e06s01
+    title: "Release CI builds bts-map and the installer is documented"
+    tasks:
+      - desc: "GitHub Actions release workflow exists"
+        verify: "test -f .github/workflows/release.yml"
+      - desc: "curl|bash install path is documented in the README"
+        verify: "grep -q 'install.sh' README.md"
+
+  - id: e06s02
+    title: "Installer verified on a fresh Linux box"
+    tasks:
+      - desc: "MANUAL/CI: `bash install.sh` then `mise run doctor` is green on fresh Linux"
+        verify: "echo 'manual: run in a clean Linux container; see e06s01 CI'"

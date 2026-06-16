@@ -1,0 +1,48 @@
+# bts toolchain manifest — ONE declarative source of truth for your whole set.
+# Apply globally:   bash install.sh        (copies this to ~/.config/mise/config.toml)
+# Verify any name:  mise registry | grep <tool>
+# Why mise: it's the only installer that spans cargo + npm + pipx/uv + GitHub
+# releases + aqua, so you stop caring which package manager each tool came from.
+
+[tools]
+# ── shell power-tools (mise registry → aqua/ubi prebuilt binaries) ──
+ripgrep = "latest"
+fd      = "latest"
+bat     = "latest"
+eza     = "latest"
+fzf     = "latest"
+jq      = "latest"
+gh      = "latest"
+direnv  = "latest"
+
+# ── AI coding toolchain (each from its own native ecosystem) ──
+"npm:opensrc"               = "latest"   # source fetcher (npm-published)
+"npm:bigpowers"             = "latest"   # your skills lifecycle
+"npm:@upstash/context7-mcp" = "latest"   # live-docs MCP server
+"pipx:aider-chat"           = "latest"   # repo-map coding agent (Python)
+"pipx:httpie"               = "latest"   # API debugging
+
+# ── binary-only Rust tools: pull from GitHub releases, NOT crates.io ──
+# (rtk's crates.io entry is a stale v0.1.0 stub; sqz ships binaries, not a CLI crate)
+"ubi:rtk-ai/rtk"     = "latest"          # token-filter command proxy
+"ubi:ojuschugh1/sqz" = "latest"          # compression engine CLI
+# If a ubi release-asset name doesn't resolve, fall back to Homebrew taps:
+#   brew install rtk-ai/tap/rtk
+#   brew install ojuschugh1/tap/sqz
+
+# ── dev tooling (for building bts itself; CONVENTIONS require these) ──
+shellcheck = "latest"   # shell scripts must pass shellcheck
+shfmt      = "latest"   # shell formatting
+bats       = "latest"   # shell test runner
+
+[env]
+# per-project knobs, surfaced to every tool via mise + direnv
+BTS_MODEL = "claude-opus-4-8"
+
+[tasks.doctor]
+description = "Verify the whole toolchain is present"
+run = '''
+for b in rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz; do
+  command -v "$b" >/dev/null && echo "ok       $b" || echo "MISSING  $b"
+done
+'''
