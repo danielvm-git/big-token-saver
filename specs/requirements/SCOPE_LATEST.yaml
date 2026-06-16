@@ -1,0 +1,90 @@
+# SCOPE_LATEST.yaml — canonical scope anchor for big-token-saver / bts
+# Produced: 2026-06-16  (backfilled; scope was decided verbally in session 1 after red-team review)
+# See specs/state.yaml `pivot` block for the full story.
+
+project: big-token-saver
+binary: bts
+version_target: "0.1.0"
+license: Apache-2.0
+
+# ── What problem this solves ────────────────────────────────────────────────
+problem: >
+  The AI-coding toolchain is scattered across five package managers (brew/cargo/npm/pipx/
+  and GitHub release binaries). Getting the full set onto a new machine requires installing
+  sqz, rtk, opensrc, aider, context7, gh, rg, bat, eza, fzf, jq, direnv — each from a
+  different source with different update mechanisms. There is no single command to get
+  everything, no front door, and no per-project wiring for the agents.
+
+user_need: >
+  One command brings the entire AI-coding toolchain to any machine.
+  A thin `bts` front door unifies the most common workflows behind
+  opinionated defaults. One net-new owned capability: a fast repo map (`bts map`)
+  ported from aider's algorithm.
+
+# ── Scope ────────────────────────────────────────────────────────────────────
+in_scope:
+  - "mise.toml — single-source toolchain manifest (registry/npm/pipx/ubi backends)"
+  - "install.sh — mise bootstrap + global manifest apply; idempotent, backs up existing config"
+  - "bin/bts — ~100-line bash dispatcher: setup/doctor/init/find/src/docs/ai/map subcommands"
+  - "bts init — per-project wiring (.bts.toml + .envrc + Claude Code PreToolUse hook)"
+  - "bts find/src/docs/ai — thin verbs delegating to rg/opensrc/context7/aider with opinionated defaults"
+  - "bts map — the ONE owned Rust binary: aider-derived PageRank + 58 tree-sitter .scm queries, vendored"
+  - "Graceful degradation on every verb (points at `bts doctor` when a tool is missing)"
+
+not_in_scope:
+  - "Token-saving middleware product (no proxy, no command-output interception, no tee store)"
+  - "Bundling any upstream tool — install from official sources only; no redistribution"
+  - "Hand-rolled install engine — mise owns version pinning, idempotency, upgrades, uninstall"
+  - "sqz-engine linking — bts installs sqz as a binary via ubi; zero ELv2 obligation in shipped code"
+  - "rtk as a Cargo dependency — it is binary-only (crates.io entry is a stale v0.1.0 stub)"
+  - "Any managed/hosted/proxy service"
+
+# ── Key constraints ───────────────────────────────────────────────────────────
+constraints:
+  - id: c01
+    text: "Install upstream; never bundle. Shipped artifacts are Apache-2.0 shell + the bts-map crate."
+  - id: c02
+    text: "Stand on mise. Do not hand-roll cross-PM installation logic."
+  - id: c03
+    text: "rtk and sqz install via ubi (GitHub release binaries). NOT crates.io."
+  - id: c04
+    text: "Shell-first for glue; Rust used ONLY for bts map (real computation)."
+  - id: c05
+    text: >
+      bts map: pin each grammar crate to match the .scm ABI (tree-sitter ABI coupling
+      is the hardest technical risk). Verify with a real query per language, not just compilation.
+      Mismatch = silent empty maps with no error.
+  - id: c06
+    text: "Every verb must degrade gracefully when its backing tool is missing — print a hint, exit non-zero."
+
+# ── Technology choices ────────────────────────────────────────────────────────
+technology:
+  installer:  mise   # cross-ecosystem install engine; handles registry/aqua/npm/pipx/ubi
+  dispatcher: bash   # ~100 lines; shellcheck + shfmt clean
+  map_crate:  rust   # petgraph PageRank + tree-sitter + tiktoken-rs; MSRV 1.80; edition 2021
+
+# ── User personas ─────────────────────────────────────────────────────────────
+personas:
+  primary:
+    name: "The author (Daniel)"
+    needs: "Daily AI-coding workflow; one install command; quick project wiring; a fast repo map for context."
+  secondary:
+    name: "Other devs who discover the tool"
+    needs: "The same toolchain; a curl|bash installer (e06, demand-driven)."
+
+# ── Red-team findings that shaped this scope ─────────────────────────────────
+# Full findings in: memory/red-team-findings.md (4-angle: legal, technical, product, security)
+scope_shapers:
+  - "Token-saving middleware has no moat; 3 of 4 original layers are commodity or already native."
+  - "Proxy/tee-store approaches bust prompt caching and can increase cost."
+  - "ELv2 distribution mislabeling risk if sqz-engine is linked (dissolved by binary-only install)."
+  - "Real user pain = scattered toolchain, not missing token compression."
+
+# ── Linked artifacts ──────────────────────────────────────────────────────────
+linked:
+  plan:              specs/release-plan.yaml
+  cockpit:           specs/execution-status.yaml
+  state:             specs/state.yaml
+  epics:             specs/epics/
+  conventions:       CONVENTIONS.md
+  toolchain_manifest: mise.toml

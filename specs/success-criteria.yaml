@@ -1,0 +1,66 @@
+# success-criteria.yaml — definition of done for bts v0.1.0
+# Backfilled 2026-06-16. Each milestone has observable, runnable acceptance tests.
+# Linked to: specs/release-plan.yaml (acceptance per epic) and specs/epics/ (verify per task)
+
+project: big-token-saver
+version: "0.1.0"
+
+# ── M0: Installer ─────────────────────────────────────────────────────────────
+m0:
+  goal: "One command brings the whole toolchain on a fresh machine"
+  done_when:
+    - "bash install.sh succeeds on a macOS machine without any of the tools pre-installed"
+    - "mise run doctor reports all 12 tools present: rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz"
+    - "Running install.sh twice leaves the system in the same state (idempotent)"
+    - "An existing ~/.config/mise/config.toml is backed up, not overwritten"
+    - "shellcheck install.sh exits 0; shfmt -d install.sh produces no diff"
+  verify_suite:
+    - "shellcheck install.sh"
+    - "bash -n install.sh && shfmt -d install.sh"
+    - "mise trust >/dev/null 2>&1 && mise run doctor | grep -c ' ok' | grep -q 12"
+
+# ── M1: Unifier ───────────────────────────────────────────────────────────────
+m1:
+  goal: "One bts front door + per-project wiring"
+  done_when:
+    - "bin/bts --help prints usage including all subcommands"
+    - "bin/bts --version prints a semver string"
+    - "bin/bts __unknown exits non-zero and prints usage"
+    - "shellcheck bin/bts exits 0"
+    - "bts setup delegates to install.sh; bts doctor delegates to mise run doctor"
+    - "bts init in an empty dir creates .bts.toml + .envrc + .claude/settings.json with a PreToolUse hook"
+    - "bts init run twice changes no files (idempotent)"
+    - "bts find, bts src, bts docs, bts ai each delegate to their backing tool"
+    - "Each verb prints a helpful message and exits non-zero when its backing tool is absent"
+  verify_suite:
+    - "bin/bts --help | grep -qi usage"
+    - "bin/bts --version | grep -qE '[0-9]+\\.[0-9]+\\.[0-9]+'"
+    - "! bin/bts __nope >/dev/null 2>&1"
+    - "shellcheck bin/bts"
+
+# ── M2: bts map ───────────────────────────────────────────────────────────────
+m2:
+  goal: "A fast, deterministic repo map — the one owned capability"
+  done_when:
+    - "bts map [budget] runs in the repo root and prints a ranked symbol map"
+    - "Output is deterministic for a fixed git tree"
+    - "Output token count is <= the requested budget (default 4096)"
+    - "Non-empty maps for >=10 languages: Rust Python JS TS Go Java Ruby C C++ Swift"
+    - "Snapshot test against crates/bts-map/tests/fixtures/ passes"
+    - "cargo test --workspace passes (no sqz in dependency tree)"
+    - "#![deny(unsafe_code)] is in effect and no unsafe blocks exist"
+  verify_suite:
+    - "cargo build -p bts-map 2>&1 | grep -v warning | grep -qc 'Finished'"
+    - "cargo test -p bts-map 2>&1 | tail -5"
+    - "grep -r 'unsafe' crates/bts-map/src/ | grep -v '//.*unsafe' | wc -l | grep -q '^0$'"
+
+# ── Regret signal (learning loop) ─────────────────────────────────────────────
+regret_definition:
+  bts_map: "bts expand <ref> is called — compression was too aggressive for that context"
+  success:  "agent never expands a ref — compression level was appropriate"
+
+# ── Out-of-scope for v0.1.0 success ───────────────────────────────────────────
+not_success_criteria:
+  - "Works on Linux (deferred to M3 / e06)"
+  - "Published curl|bash installer (M3, demand-driven)"
+  - "MinHash dedup, KV cache optimizer, regret tracker (backlog / e07)"
