@@ -45,7 +45,7 @@ epics:
     title: "Toolchain manifest + bootstrap"
     milestone: m0
     size: S
-    status: in_progress      # v0 already in repo
+    status: done             # shipped: mise run doctor 12/12 ok
     description: >
       mise.toml manifest (source of truth) listing the full set across registry/npm/
       pipx/ubi backends; install.sh that installs mise then applies the manifest
@@ -59,7 +59,7 @@ epics:
     title: "bts dispatcher (shell front door)"
     milestone: m1
     size: S
-    status: ready
+    status: done             # bin/bts, gate 8/8 (2026-06-17)
     description: >
       A ~100-line bash `bts` script: subcommand routing, `--help`, `--version`,
       `bts setup` (-> install.sh), `bts doctor` (-> mise run doctor), and a clean
@@ -72,12 +72,12 @@ epics:
     title: "bts init — per-project wiring"
     milestone: m1
     size: M
-    status: ready
+    status: done             # project-local, delegates to sqz/rtk init (d09); gate 6/6
     description: >
       `bts init` bootstraps a project: writes `.bts.toml` (model, token budget) and a
-      direnv `.envrc`, pre-wires the active agent's hooks (Claude Code first; the hook
-      shells out to the installed rtk/sqz binaries — no linking), optionally seeds
-      bigpowers `specs/`. Idempotent.
+      direnv `.envrc`, wires the active agent's hooks by delegating to the tools' own
+      installers (`sqz init` / `rtk init`, Claude Code first — never hand-rolls hook JSON,
+      never links), optionally seeds bigpowers `specs/`. Idempotent.  [refined d09]
     acceptance: >
       In an empty dir, `bts init` produces .bts.toml + .envrc + a working Claude Code
       hook; running twice changes nothing; `direnv allow` loads the budget env.
@@ -86,12 +86,13 @@ epics:
     title: "Unified verbs with opinionated defaults"
     milestone: m1
     size: M
-    status: ready
+    status: done             # find/src/docs/ai; docs=context7 MCP (d08); regression 13/13
     description: >
-      Thin verbs wrapping installed tools so you stop remembering which is which:
+      Thin verbs over installed tools so you stop remembering which is which:
       `bts find` (rg -> fzf picker -> bat preview), `bts src <pkg>` (opensrc),
-      `bts docs <lib>` (context7), `bts ai` (launch aider / Claude Code with hooks +
-      budget pre-loaded). Each is a shell function delegating to one tool.
+      `bts docs` (launch/print the context7 MCP config for the active agent — context7
+      is an MCP server, not a pipe CLI), `bts ai` (launch aider / Claude Code with hooks +
+      budget pre-loaded). Each delegates to one tool and degrades gracefully.  [refined d08]
     acceptance: >
       `bts find <pattern>` opens an interactive picker with preview; `bts src zod`
       returns cached source; each verb degrades gracefully if its tool is missing

@@ -1,20 +1,20 @@
 # done/pending per story — bigpowers cockpit
-# Updated: 2026-06-15 (after slice-tasks + e01 verification)
-updated: "2026-06-15"
+# Updated: 2026-06-16 (e02 dispatcher built + gate-verified 8/8)
+updated: "2026-06-16"
 
 epics:
   e01:                       # Installer — verified DONE (v0 in repo)
     status: done
     stories: { e01s01: done, e01s02: done, e01s03: done }
-  e02:                       # Dispatcher — next up
-    status: pending
-    stories: { e02s01: pending, e02s02: pending }
-  e03:
-    status: pending
-    stories: { e03s01: pending, e03s02: pending }
-  e04:
-    status: pending
-    stories: { e04s01: pending, e04s02: pending }
+  e02:                       # Dispatcher — DONE (bin/bts, 8/8 verifies green, shellcheck+shfmt clean)
+    status: done
+    stories: { e02s01: done, e02s02: done }
+  e03:                       # init — DONE (project-local; delegates hooks to sqz/rtk init per d09)
+    status: done
+    stories: { e03s01: done, e03s02: done }
+  e04:                       # verbs — DONE (find/src/docs/ai; docs = context7 MCP launcher per d08)
+    status: done
+    stories: { e04s01: done, e04s02: done }
   e05:                       # bts map (Rust) — the one heavy item
     status: pending
     stories: { e05s01: pending, e05s02: pending, e05s03: pending }
@@ -27,8 +27,9 @@ epics:
 
 summary:
   total_stories: 15
-  done: 3
-  pending: 11
+  done: 9
+  pending: 5
   backlog: 1
 
-next: e02s01    # kickoff-branch e02/dispatcher -> develop-tdd e02s01
+# m1 (Unifier) COMPLETE: e02+e03+e04 done. PAUSED before e05 (heavy Rust crate) per user.
+next: e05s01    # bts map (Rust): vendor aider .scm + pin grammar crates to v0.13.0 vintage

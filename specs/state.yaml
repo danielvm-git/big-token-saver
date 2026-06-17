@@ -1,11 +1,11 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-15 (build-ready after slice-tasks)
+# Last updated: 2026-06-16 (DISCOVER/ELABORATE technical docs backfilled, source-grounded)
 
 session:
   phase: BUILD             # planning complete; every epic task carries a runnable verify
-  active_epic: e02
-  active_story: e02s01
-  last_skill: slice-tasks
+  active_epic: e05           # de-risked by spike; ready to build when user resumes
+  active_story: e05s01
+  last_skill: spike-prototype  # SPIKE-bts-map proved grammar pinning viable (Sonnet built+ran; Opus folded findings into plan)
 
 pivot:
   date: 2026-06-15
@@ -34,6 +34,22 @@ decisions:
     text: "bts map is the single owned, net-new capability (aider PageRank + .scm queries), Apache-2.0. Pin grammar crates to match the .scm ABI (red team's hardest technical risk)."
   - id: d07
     text: "Personal-first, shareable. If published, the installer declares dependencies; it does not contain them."
+  - id: d08
+    text: "`bts docs` is NOT a run-and-pipe verb: context7 is an MCP server, not a CLI. e04 redefines `bts docs` as show/launch the context7 MCP config for the active agent."
+    source: "source-grounded read of @upstash/context7-mcp (2026-06-16)"
+  - id: d09
+    text: "`bts init` delegates hook injection to the tools' own installers (`sqz init --only claude --yes`, `rtk init --agent claude --auto-patch`) — it does NOT hand-roll PreToolUse JSON. e03 wires by calling them."
+    source: "source-grounded read of sqz + rtk (2026-06-16); implemented + verified e03 (2026-06-17)"
+    side_effects: >
+      Observed in e03 build: delegation inherits the tools' full init behavior. `sqz init`
+      writes a PROJECT-scoped .claude/settings.local.json (good) but also ensures user-level
+      shell integration (.zshrc hook, zsh completions, ~/.sqz preset — all idempotent).
+      `rtk init` injects rtk instructions into the project's CLAUDE.md and writes .rtk/filters.toml.
+      Neither touches global ~/.claude/settings.json. This is the accepted trade-off of d09
+      (delegate, don't hand-roll). Document in `bts init` help so users aren't surprised.
+  - id: d10
+    text: "e05 grammar pinning PROVEN VIABLE by spike (2026-06-17). Pins: tree-sitter =0.24.6 + tree-sitter-rust/python/typescript 0.23.x + streaming-iterator. Mandatory CI gate = per-language non-empty def+ref AND def node-kind=='identifier'. Silent-empty-map is real only for STRUCTURAL mismatch (0.24.x catches name/field/structure errors at compile time)."
+    source: "specs/archive/spikes/SPIKE-bts-map.md; e05-map.yaml spike_findings; adr/0005 Validation section"
 
 environment:
   ready: true
@@ -42,18 +58,38 @@ environment:
 
 artifacts:
   done:
-    - mise.toml             # toolchain manifest (source of truth)
-    - install.sh            # mise bootstrap (shellcheck + shfmt clean)
-    - "specs/epics/*.yaml"  # 7 epic shards, 15 stories, every task has a verify
+    - mise.toml                              # toolchain manifest (source of truth)
+    - install.sh                             # mise bootstrap (shellcheck + shfmt clean)
+    - "specs/epics/*.yaml"                   # 7 epic shards, 15 stories, every task has a verify
     - specs/execution-status.yaml
+    - specs/requirements/SCOPE_LATEST.yaml
+    - specs/requirements/VISION_LATEST.yaml  # backfilled 2026-06-16
+    - specs/plans/TECH_STACK_LATEST.md       # backfilled 2026-06-16, source-grounded
+    - "specs/adr/0001..0005-*.md"            # backfilled 2026-06-16 (pivot, ELv2 boundary, ubi, shell-first, map/grammar-pin)
+    - bin/bts                                # shell dispatcher (e02) — DONE 2026-06-16, on branch e02/dispatcher
+    - "bts init (in bin/bts)"                # per-project wiring (e03) — DONE 2026-06-17, project-local, delegates to sqz/rtk init
+    - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
   pending:
-    - bin/bts               # shell dispatcher (e02)
-    - "bts init logic"      # per-project wiring (e03)
-    - crates/bts-map/       # the one Rust crate (e05)
+    - crates/bts-map/       # the one Rust crate (e05) — NEXT, paused for checkpoint
 
 handoff: |
-  BUILD-READY. git initialized; mise + shellcheck + shfmt + bats installed.
-  Epic shards sliced into specs/epics/eNN-*.yaml — every task carries a runnable `verify:`.
-  e01 (Installer) is DONE: all three stories' verifies pass (mise run doctor = 12/12 tools ok).
-  Next: kickoff-branch on e02/dispatcher, then develop-tdd e02s01 (bin/bts routing + help/version).
-  bts map (e05) is the only heavy/Rust item; defer until the shell unifier is in daily use.
+  MILESTONE m1 (UNIFIER) COMPLETE — 2026-06-17, branch e02/dispatcher, ALL UNCOMMITTED.
+  bin/bts (261 lines) routes setup/doctor/init/find/src/docs/ai. Built by Sonnet agents,
+  gate-verified by Opus: e02 8/8, e03 6/6 (project-local confirmed, no global-config writes),
+  e04 full regression 13/13. shellcheck + shfmt clean throughout.
+  Technical docs backfilled + source-grounded: VISION, plans/TECH_STACK_LATEST.md, adr/0001-0005.
+  d08 (docs=context7 MCP launcher) + d09 (init delegates to sqz/rtk init) folded into shards,
+  release-plan, AND verified in the built code. d09 side-effects recorded (sqz shell integration,
+  rtk CLAUDE.md injection) — see d09 `side_effects`.
+  Orchestration model: Opus orchestrates + runs every gate; Sonnet did all heavy source-reading
+  and all story implementation; mechanical in-context edits stayed on Opus (cheaper than a cold
+  sub-agent round-trip). ~250k+ sub-agent tokens kept off Opus context.
+  e05 SPIKE DONE (2026-06-17) — grammar pinning PROVEN VIABLE. See SPIKE-bts-map.md + d10.
+  The e05 shard now carries spike_findings (exact pins, API gotchas, mandatory test gate); adr/0005
+  has a Validation section. Net effect: e05 is de-risked and ready to build — no longer a leap.
+  Resume path for e05: e05s01 (skeleton with the proven pins) -> e05s02 (rust tracer bullet; test
+  asserts defs>0 && refs>0 && def-node-kind=='identifier') -> e05s03 (>=10 langs, vendor BOTH .scm dirs).
+  Git: ALL work (docs backfill + bin/bts + spike notes) is uncommitted on branch e02/dispatcher; user
+  has not asked to commit. Branch is misnamed for scope (holds e02+e03+e04 + spike) — consider renaming
+  to m1/unifier (or committing m1 + spike separately) at commit time. The spike is THROWAWAY (its cargo
+  project lived in a temp dir, already gone); only SPIKE-bts-map.md persists.
