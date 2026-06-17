@@ -3,9 +3,9 @@
 
 session:
   phase: BUILD             # planning complete; every epic task carries a runnable verify
-  active_epic: e05           # de-risked by spike; ready to build when user resumes
-  active_story: e05s01
-  last_skill: spike-prototype  # SPIKE-bts-map proved grammar pinning viable (Sonnet built+ran; Opus folded findings into plan)
+  active_epic: e05           # tracer bullet (s01+s02) done & committed; s03 scale-up next
+  active_story: e05s03
+  last_skill: develop-tdd    # e05 tracer bullet built by a Sonnet agent, gate 5/5 by Opus
 
 pivot:
   date: 2026-06-15
@@ -69,27 +69,27 @@ artifacts:
     - bin/bts                                # shell dispatcher (e02) — DONE 2026-06-16, on branch e02/dispatcher
     - "bts init (in bin/bts)"                # per-project wiring (e03) — DONE 2026-06-17, project-local, delegates to sqz/rtk init
     - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
+    - "crates/bts-map/ tracer bullet"        # e05s01+s02 — DONE 2026-06-17: Rust parse->tags->petgraph->PageRank, gate 5/5, committed
   pending:
-    - crates/bts-map/       # the one Rust crate (e05) — NEXT, paused for checkpoint
+    - "crates/bts-map/ scale-up (e05s03)"    # >=10 langs + tiktoken budget + TreeContext renderer + snapshot
 
 handoff: |
-  MILESTONE m1 (UNIFIER) COMPLETE — 2026-06-17, branch e02/dispatcher, ALL UNCOMMITTED.
-  bin/bts (261 lines) routes setup/doctor/init/find/src/docs/ai. Built by Sonnet agents,
-  gate-verified by Opus: e02 8/8, e03 6/6 (project-local confirmed, no global-config writes),
-  e04 full regression 13/13. shellcheck + shfmt clean throughout.
-  Technical docs backfilled + source-grounded: VISION, plans/TECH_STACK_LATEST.md, adr/0001-0005.
-  d08 (docs=context7 MCP launcher) + d09 (init delegates to sqz/rtk init) folded into shards,
-  release-plan, AND verified in the built code. d09 side-effects recorded (sqz shell integration,
-  rtk CLAUDE.md injection) — see d09 `side_effects`.
-  Orchestration model: Opus orchestrates + runs every gate; Sonnet did all heavy source-reading
-  and all story implementation; mechanical in-context edits stayed on Opus (cheaper than a cold
-  sub-agent round-trip). ~250k+ sub-agent tokens kept off Opus context.
-  e05 SPIKE DONE (2026-06-17) — grammar pinning PROVEN VIABLE. See SPIKE-bts-map.md + d10.
-  The e05 shard now carries spike_findings (exact pins, API gotchas, mandatory test gate); adr/0005
-  has a Validation section. Net effect: e05 is de-risked and ready to build — no longer a leap.
-  Resume path for e05: e05s01 (skeleton with the proven pins) -> e05s02 (rust tracer bullet; test
-  asserts defs>0 && refs>0 && def-node-kind=='identifier') -> e05s03 (>=10 langs, vendor BOTH .scm dirs).
-  Git: ALL work (docs backfill + bin/bts + spike notes) is uncommitted on branch e02/dispatcher; user
-  has not asked to commit. Branch is misnamed for scope (holds e02+e03+e04 + spike) — consider renaming
-  to m1/unifier (or committing m1 + spike separately) at commit time. The spike is THROWAWAY (its cargo
-  project lived in a temp dir, already gone); only SPIKE-bts-map.md persists.
+  e05 TRACER BULLET DONE & COMMITTED — 2026-06-17, branch m1/unifier.
+  Commits: docs(specs) backfill, feat(bts) unifier, chore(specs) spike+cockpit, feat(bts-map) tracer.
+  m1: bin/bts routes setup/doctor/init/find/src/docs/ai (gates e02 8/8, e03 6/6, e04 13/13).
+  e05 tracer: crates/bts-map/ proves the path for Rust — parse -> vendored rust-tags.scm tags ->
+  petgraph -> deterministic hand-rolled PageRank -> ranked. clap CLI, #![deny(unsafe_code)].
+  Gate e05 tracer 5/5: build, --help mentions budget, clippy -D, rust_tags (defs>0 && refs>0 &&
+  fn/method-def node-kind==identifier — note: struct/enum defs are type_identifier, so the node-kind
+  assertion is scoped to fn/method defs), deterministic. Pins in crates/bts-map/Cargo.toml:
+  tree-sitter =0.24.6, tree-sitter-rust =0.23.2, streaming-iterator, clap, petgraph. target/ ignored,
+  Cargo.lock committed.
+  All builds by Sonnet; all gates by Opus. ~340k sub-agent tokens kept off Opus context.
+  NEXT = e05s03 SCALE-UP (the heavy remainder). Recommended split:
+    (a) multi-language + budget: add ~9 grammars (python/typescript/go/java/ruby/c/cpp/swift/...),
+        pin each to the tree-sitter-language-pack v0.13.0 vintage, vendor each .scm from BOTH aider
+        dirs (TS only in tree-sitter-languages; Swift only in tree-sitter-language-pack), per-lang
+        non-empty def+ref test; tiktoken-rs budget (output <= requested) -> `cargo test budget`.
+    (b) renderer + snapshot: reimplement aider grep_ast.TreeContext skeleton renderer (HIGH risk,
+        second-biggest unknown per TECH_STACK §6) + deterministic snapshot vs fixture -> `cargo test snapshot`.
+  PAUSED here for a checkpoint before the heavy renderer work.

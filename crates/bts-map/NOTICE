@@ -1,0 +1,22 @@
+bts-map — Third-Party Notices
+==============================
+
+This crate vendors tag-query files (.scm) originally collected and maintained
+by the aider project (https://github.com/paul-gauthier/aider, MIT License).
+The queries themselves originate from individual tree-sitter grammar repositories
+and carry a mix of MIT and Apache 2.0 licenses as inherited via aider.
+
+Per-grammar attribution
+-----------------------
+
+rust-tags.scm
+  Source:   aider/queries/tree-sitter-language-pack/rust-tags.scm
+  Grammar:  tree-sitter-rust (https://github.com/tree-sitter/tree-sitter-rust)
+  Grammar license: MIT
+  Bundled via: tree-sitter-language-pack (https://github.com/Golmote/tree-sitter-language-pack)
+  Bundled license: MIT
+  Vendored from aider commit: main branch as of 2026-06-17
+
+Note: aider itself is MIT-licensed. The .scm files are a thin syntactic layer;
+copyright of the underlying grammar definitions remains with the respective grammar
+maintainers as listed above.

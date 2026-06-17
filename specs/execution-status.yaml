@@ -15,9 +15,9 @@ epics:
   e04:                       # verbs — DONE (find/src/docs/ai; docs = context7 MCP launcher per d08)
     status: done
     stories: { e04s01: done, e04s02: done }
-  e05:                       # bts map (Rust) — the one heavy item
-    status: pending
-    stories: { e05s01: pending, e05s02: pending, e05s03: pending }
+  e05:                       # bts map (Rust) — tracer bullet (s01+s02) DONE; s03 scale-up pending
+    status: in_progress
+    stories: { e05s01: done, e05s02: done, e05s03: pending }
   e06:
     status: pending
     stories: { e06s01: pending, e06s02: pending }
@@ -27,9 +27,9 @@ epics:
 
 summary:
   total_stories: 15
-  done: 9
-  pending: 5
+  done: 11
+  pending: 3
   backlog: 1
 
-# m1 (Unifier) COMPLETE: e02+e03+e04 done. PAUSED before e05 (heavy Rust crate) per user.
-next: e05s01    # bts map (Rust): vendor aider .scm + pin grammar crates to v0.13.0 vintage
+# m1 done. e05 tracer bullet (s01+s02) done — whole path proven for Rust.
+next: e05s03    # SCALE-UP: >=10 langs (vendor both .scm dirs) + tiktoken budget + TreeContext renderer + snapshot
