@@ -1,0 +1,261 @@
+#!/usr/bin/env bash
+# bts — toolchain bootstrapper + AI-workflow unifier dispatcher.
+# Usage:  bts <verb> [args…]
+# Verbs:  setup  doctor  init  help  (find/src/docs/ai/map — planned)
+set -euo pipefail
+
+BTS_VERSION="0.1.0"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Default values — overridden by env if already set.
+BTS_MODEL="${BTS_MODEL:-claude-opus-4-8}"
+BTS_TOKEN_BUDGET="${BTS_TOKEN_BUDGET:-8192}"
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+bts_usage() {
+	cat <<'EOF'
+Usage: bts <verb> [args…]
+
+Verbs:
+  setup    Bootstrap the whole toolchain (runs install.sh)
+  doctor   Verify every tool is present (runs mise run doctor)
+  init     Per-project wiring: .bts.toml + .envrc + agent hooks
+  find     Search code: rg → fzf picker (--print for non-interactive)
+  src      Print/fetch source for a package via opensrc
+  docs     Show/launch the context7 MCP server config for the active agent
+  ai       Launch the coding agent with the project model preloaded
+  help     Show this message
+
+  Planned: map
+
+Options:
+  -h, --help     Show this message and exit
+  -V, --version  Print version and exit
+EOF
+}
+
+# Guard: check a binary is present; print hint + exit 1 if not.
+# Usage: _require <binary> [<hint>]
+_require() {
+	local bin="${1}"
+	local hint="${2:-run bts doctor to see what is missing}"
+	if ! command -v "${bin}" >/dev/null 2>&1; then
+		echo "MISSING  ${bin} — ${hint}" >&2
+		exit 1
+	fi
+}
+
+# ---------------------------------------------------------------------------
+# verb implementations
+# ---------------------------------------------------------------------------
+
+bts_setup() {
+	local installer="${HERE}/../install.sh"
+	installer="$(cd "$(dirname "${installer}")" && pwd)/$(basename "${installer}")"
+	if [ ! -f "${installer}" ]; then
+		echo "MISSING  install.sh not found at ${installer}" >&2
+		exit 1
+	fi
+	echo "→ running installer: ${installer}"
+	bash "${installer}"
+}
+
+bts_doctor() {
+	_require mise "install mise first — see https://mise.jdx.dev or run bts setup"
+	echo "→ running mise run doctor…"
+	mise run doctor
+}
+
+bts_init() {
+	# ── e03s01: scaffold .bts.toml and .envrc, idempotent ──────────────────
+	local toml=".bts.toml"
+	local envrc=".envrc"
+
+	if [ -f "${toml}" ]; then
+		echo "→ ${toml} exists — skipping"
+	else
+		cat >"${toml}" <<EOF
+[bts]
+model        = "${BTS_MODEL}"
+token_budget = ${BTS_TOKEN_BUDGET}
+EOF
+		echo "✓ wrote ${toml}"
+	fi
+
+	if [ -f "${envrc}" ]; then
+		echo "→ ${envrc} exists — skipping"
+	else
+		cat >"${envrc}" <<EOF
+export BTS_MODEL="${BTS_MODEL}"
+export BTS_TOKEN_BUDGET="${BTS_TOKEN_BUDGET}"
+EOF
+		echo "✓ wrote ${envrc}"
+	fi
+
+	# ── e03s02: delegate agent-hook wiring to sqz/rtk — non-fatal ──────────
+	# sqz init: project-local by default (no --global), --only claude scopes
+	# to Claude Code only, --yes skips the confirmation prompt.
+	if command -v sqz >/dev/null 2>&1; then
+		echo "→ wiring sqz hooks…"
+		sqz init --only claude --yes || true
+	else
+		echo "MISSING  sqz — run bts doctor to install" >&2
+	fi
+
+	# rtk init: project-local by default (no --global), --agent claude targets
+	# Claude Code, --auto-patch writes settings.json without prompting.
+	if command -v rtk >/dev/null 2>&1; then
+		echo "→ wiring rtk hooks…"
+		rtk init --agent claude --auto-patch || true
+	else
+		echo "MISSING  rtk — run bts doctor to install" >&2
+	fi
+}
+
+# bts find — search code with rg; pipe into fzf+bat when interactive.
+# --print mode: non-interactive, exits 0 when rg finds matches.
+bts_find() {
+	local print_mode=0
+	local pattern=""
+
+	# Parse arguments.
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--print)
+			print_mode=1
+			shift
+			;;
+		*)
+			pattern="$1"
+			shift
+			;;
+		esac
+	done
+
+	if [ -z "${pattern}" ]; then
+		echo "Usage: bts find [--print] <pattern>" >&2
+		exit 1
+	fi
+
+	_require rg "run bts doctor — rg (ripgrep) is required for bts find"
+
+	if [ "${print_mode}" -eq 1 ]; then
+		rg "${pattern}"
+	else
+		_require fzf "run bts doctor — fzf is required for interactive bts find"
+		_require bat "run bts doctor — bat is required for bts find preview"
+		rg --line-number "${pattern}" |
+			fzf --ansi \
+				--delimiter ':' \
+				--preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
+				--preview-window 'right:60%'
+	fi
+}
+
+# bts src <pkg> — print the path to cached source for a package via opensrc.
+# opensrc path fetches on cache miss then prints the absolute path.
+bts_src() {
+	local pkg="${1:-}"
+	if [ -z "${pkg}" ]; then
+		echo "Usage: bts src <package>" >&2
+		exit 1
+	fi
+	_require opensrc "run bts doctor — opensrc is required for bts src"
+	opensrc path "${pkg}"
+}
+
+# bts docs [lib] — surface the context7 MCP server config for the active agent.
+# context7 is an MCP server (@upstash/context7-mcp), not a CLI you pipe through.
+# This verb prints the config snippet and the one-liner to register it with Claude Code.
+bts_docs() {
+	local lib="${1:-}"
+	echo "→ context7 MCP server: @upstash/context7-mcp"
+	echo ""
+	echo "Register with Claude Code (one-time per project):"
+	echo "  claude mcp add context7 -- npx -y @upstash/context7-mcp"
+	echo ""
+	if [ -n "${lib}" ]; then
+		echo "→ Once registered, ask your agent:"
+		echo "  \"use context7 to get the latest docs for ${lib}\""
+	else
+		echo "→ Once registered, ask your agent to use context7 for any library docs."
+	fi
+	echo ""
+	echo "→ To start the MCP server manually:"
+	echo "  npx -y @upstash/context7-mcp"
+}
+
+# bts ai — launch the coding agent with the project model preloaded.
+# Prefers aider; mentions claude as the alternative.
+bts_ai() {
+	if command -v aider >/dev/null 2>&1; then
+		echo "→ launching aider with model ${BTS_MODEL}"
+		aider --model "${BTS_MODEL}" "$@"
+	elif command -v claude >/dev/null 2>&1; then
+		echo "→ aider not found; launching claude"
+		claude "$@"
+	else
+		echo "MISSING  aider (or claude) — run bts doctor to install" >&2
+		exit 1
+	fi
+}
+
+# ---------------------------------------------------------------------------
+# router
+# ---------------------------------------------------------------------------
+
+main() {
+	local verb="${1:-}"
+
+	case "${verb}" in
+	-h | --help | help | "")
+		bts_usage
+		exit 0
+		;;
+	-V | --version)
+		echo "${BTS_VERSION}"
+		exit 0
+		;;
+	setup)
+		shift
+		bts_setup "$@"
+		;;
+	doctor)
+		shift
+		bts_doctor "$@"
+		;;
+	init)
+		shift
+		bts_init "$@"
+		;;
+	find)
+		shift
+		bts_find "$@"
+		;;
+	src)
+		shift
+		bts_src "$@"
+		;;
+	docs)
+		shift
+		bts_docs "$@"
+		;;
+	ai)
+		shift
+		bts_ai "$@"
+		;;
+	# map verb — planned (e05):
+	# map)    shift; bts_map "$@"  ;;
+	*)
+		echo "MISSING  unknown subcommand '${verb}'" >&2
+		echo >&2
+		bts_usage >&2
+		exit 1
+		;;
+	esac
+}
+
+main "$@"
