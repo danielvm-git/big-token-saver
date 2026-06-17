@@ -3,7 +3,7 @@ title: "Unified verbs with opinionated defaults"
 milestone: m1
 wsjf: 7.0
 status: ready
-summary: "Thin verbs wrapping installed tools: find / src / docs / ai. Each degrades gracefully."
+summary: "Thin verbs over installed tools: find / src / ai delegate to one binary; docs launches the context7 MCP config (it is an MCP server, not a pipe CLI). Each degrades gracefully."
 
 stories:
   - id: e04s01
@@ -12,12 +12,15 @@ stories:
       - desc: "bts find --print <pat> returns rg hits without the interactive picker"
         verify: "bin/bts find --print 'fn ' >/dev/null"
       - desc: "find degrades gracefully when its tool is absent (points at doctor)"
-        verify: "PATH=/usr/bin bin/bts find --print x 2>&1 | grep -qi doctor"
+        # PATH=/usr/bin:/bin keeps bash/coreutils but drops homebrew rg/fzf/bat -> clean absent sandbox
+        verify: "PATH=/usr/bin:/bin bin/bts find --print x 2>&1 | grep -qi doctor"
 
   - id: e04s02
-    title: "src / docs / ai delegate to the installed upstream tools"
+    title: "src delegates to opensrc; docs launches the context7 MCP config; ai launches the agent"
+    # Refined 2026-06-16 (d08): context7 is an MCP server, not a CLI you pipe through.
+    # `bts docs` shows/launches its MCP config for the active agent rather than wrapping a binary.
     tasks:
       - desc: "bts src delegates to opensrc"
         verify: "grep -q 'opensrc' bin/bts"
-      - desc: "bts docs uses context7; bts ai launches the agent"
-        verify: "grep -q 'context7' bin/bts && grep -qE 'aider|claude' bin/bts"
+      - desc: "bts docs prints/launches the context7 MCP server config for the active agent; bts ai launches the agent"
+        verify: "grep -qE 'context7(-mcp)?' bin/bts && grep -qE 'aider|claude' bin/bts"

@@ -15,7 +15,13 @@ stories:
         verify: "BTS=$PWD/bin/bts; d=$(mktemp -d); (cd \"$d\" && \"$BTS\" init >/dev/null && \"$BTS\" init >/dev/null)"
 
   - id: e03s02
-    title: "Claude Code hook is wired and valid JSON"
+    title: "init delegates agent-hook wiring to sqz/rtk's own installers (no hand-rolled JSON)"
+    # Refined 2026-06-16 (d09): source read of sqz + rtk shows both ship their own hook
+    # installers (`sqz init --only claude`, `rtk init --agent claude`). bts init must call
+    # them, not write PreToolUse JSON itself.
     tasks:
-      - desc: "init writes .claude/settings.json with a PreToolUse hook (shells to installed rtk/sqz — no linking)"
-        verify: "BTS=$PWD/bin/bts; d=$(mktemp -d); (cd \"$d\" && \"$BTS\" init >/dev/null && jq -e '.hooks.PreToolUse' .claude/settings.json >/dev/null)"
+      - desc: "bts init invokes `sqz init` and `rtk init` for the active agent (Claude Code first), guarded by command -v — it does NOT hand-roll PreToolUse JSON"
+        verify: "grep -qE 'sqz[[:space:]]+init' bin/bts && grep -qE 'rtk[[:space:]]+init' bin/bts && grep -qE 'command -v (sqz|rtk)' bin/bts"
+      - desc: "hook wiring degrades gracefully when sqz/rtk are absent: warns, points at doctor, init still exits 0"
+        # PATH=/usr/bin:/bin keeps bash/coreutils but drops mise(homebrew)/sqz(~/.local)/rtk(homebrew) -> clean absent sandbox
+        verify: "BTS=$PWD/bin/bts; d=$(mktemp -d); (cd \"$d\" && PATH=/usr/bin:/bin \"$BTS\" init 2>&1 | grep -qi doctor)"
