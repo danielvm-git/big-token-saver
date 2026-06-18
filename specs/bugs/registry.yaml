@@ -13,3 +13,9 @@ bugs:
     scope: bts-dispatcher
     summary: "bts compress --stdin rejects the flag it advertises in usage"
     file: specs/bugs/BUG-20260618T044939-stdin-flag.md
+    status: fixed
+    risk_level: low
+    approach: "Add --stdin case arm to flag parser"
+    hardening: "mise run test task with 3 --stdin regression smoke tests"
+    commit_message: "fix(bts): implement --stdin flag in compress verb"
+    files_changed: ["bin/bts", "mise.toml"]

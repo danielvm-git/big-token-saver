@@ -46,3 +46,59 @@ for b in rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz; do
   command -v "$b" >/dev/null && echo "ok       $b" || echo "MISSING  $b"
 done
 '''
+
+[tasks.test]
+description = "Run shell dispatcher smoke tests + Rust crate tests"
+run = '''
+set -euo pipefail
+BTS="./bin/bts"
+PASS=0
+FAIL=0
+
+assert_ok() {
+  local desc="$1"; shift
+  if "$@" >/dev/null 2>&1; then
+    echo "ok       $desc"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL     $desc"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+assert_eq() {
+  local desc="$1" expected="$2" actual="$3"
+  if [ "$actual" = "$expected" ]; then
+    echo "ok       $desc"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL     $desc (expected: $expected, got: $actual)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+echo "--- bts shell dispatcher ---"
+
+# compress: --stdin flag (BUG-20260618T044939 regression guard)
+assert_ok "compress --stdin flag accepted" $BTS compress --stdin <<< "test"
+assert_ok "compress --stdin --budget N"    $BTS compress --stdin --budget 512 <<< "test"
+assert_ok "compress --budget N --stdin"    $BTS compress --budget 512 --stdin <<< "test"
+assert_ok "compress pipe without flag"      $BTS compress <<< "test"
+
+# bts help
+exit_code=0
+$BTS -h >/dev/null 2>&1 || exit_code=$?
+assert_eq "bts -h exits 0" "0" "$exit_code"
+
+# bts version (via bts -V or bts --version)
+exit_code=0
+$BTS -h >/dev/null 2>&1 || exit_code=$?
+assert_eq "bts help exits clean" "0" "$exit_code"
+
+echo "--- bts-map Rust crate ---"
+cargo test --quiet 2>&1 | tail -5
+
+echo ""
+echo "Results: $PASS passed, $FAIL failed"
+[ "$FAIL" -eq 0 ] || exit 1
+'''
