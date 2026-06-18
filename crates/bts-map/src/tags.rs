@@ -23,9 +23,9 @@ const JAVASCRIPT_SCM: &str = include_str!("../vendor/queries/javascript-tags.scm
 const GO_SCM: &str = include_str!("../vendor/queries/go-tags.scm");
 const JAVA_SCM: &str = include_str!("../vendor/queries/java-tags.scm");
 const RUBY_SCM: &str = include_str!("../vendor/queries/ruby-tags.scm");
-const C_SCM: &str = include_str!("../vendor/queries/c-tags.scm");
-const CPP_SCM: &str = include_str!("../vendor/queries/cpp-tags.scm");
-const SWIFT_SCM: &str = include_str!("../vendor/queries/swift-tags.scm");
+const C_SCM: &str = include_str!("../queries/c-tags.scm");
+const CPP_SCM: &str = include_str!("../queries/cpp-tags.scm");
+const SWIFT_SCM: &str = include_str!("../queries/swift-tags.scm");
 
 /// Which grammar to use when parsing a file.
 ///
@@ -129,6 +129,9 @@ pub fn language_for(lang: Lang) -> Language {
         Lang::Cpp => tree_sitter_cpp::LANGUAGE.into(),
         // npezza93-tree-sitter-swift uses the legacy fn API, not the LANGUAGE constant.
         // The returned Language value is accepted by Parser::set_language at runtime.
+        //
+        // SWIFT-FORK-TRACKING: non-canonical supply chain. Switch to the official
+        // tree-sitter-swift crate when tree-sitter core is bumped to >=0.25.
         Lang::Swift => npezza93_tree_sitter_swift::language(),
     }
 }

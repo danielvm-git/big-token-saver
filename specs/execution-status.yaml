@@ -1,6 +1,6 @@
 # done/pending per story — bigpowers cockpit
-# Updated: 2026-06-16 (e02 dispatcher built + gate-verified 8/8)
-updated: "2026-06-16"
+# Updated: 2026-06-17 (pre-publish hygiene done: PROVENANCE fix, snapshot fail-if-absent, Swift fork documented)
+updated: "2026-06-17"
 
 epics:
   e01:                       # Installer — verified DONE (v0 in repo)
@@ -18,6 +18,10 @@ epics:
   e05:                       # bts map (Rust) — DONE: 10 langs + tiktoken budget + renderer + snapshot (13/13)
     status: done
     stories: { e05s01: done, e05s02: done, e05s03: done }
+    pre_publish_hygiene:     # Addressed 2026-06-17
+      provenance_fix: done   # Divergent .scm moved to queries/ dir, vendor/queries/ is verbatim
+      snapshot_fail: done    # expected_snapshot.txt absent -> test FAILS with clear instructions
+      swift_fork: done       # Tracked with deny.toml + SWIFT-FORK-TRACKING comments (blocked on ts 0.25)
   e06:
     status: pending
     stories: { e06s01: pending, e06s02: pending }
@@ -31,5 +35,5 @@ summary:
   pending: 2
   backlog: 1
 
-# m0+m1+m2 COMPLETE. bts map ships 10 langs + budget + snapshot. Only m3 (e06 share, e07 backlog) remains — demand-driven.
+# m0+m1+m2 COMPLETE. Pre-publish hygiene done (2026-06-17). Only m3 (e06 share, e07 backlog) remains — demand-driven.
 next: e06s01    # m3: cross-platform verify + published curl|bash installer (demand-driven — pull only if used)

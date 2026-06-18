@@ -391,6 +391,9 @@ func main() {
     /// The fixture repo lives in tests/fixtures/ and contains files across
     /// several of the 10 supported languages. This test runs the map at a
     /// fixed budget and asserts the output matches the committed snapshot.
+    ///
+    /// To regenerate the snapshot (e.g. after intentional output changes):
+    ///   GENERATE_SNAPSHOT=1 cargo test -p bts-map snapshot
     #[test]
     fn snapshot() {
         use std::path::Path;
@@ -420,22 +423,39 @@ func main() {
         let ranked = rank_files(&all_tags);
         let output = render(&ranked, &all_tags, 256);
 
-        // Assert against the committed expected snapshot.
-        // If the snapshot file doesn't exist yet (first run), write it and pass.
+        // Check for GENERATE_SNAPSHOT env var to allow explicit regeneration.
+        // is_ok_and guards against accidental GENERATE_SNAPSHOT=0 triggering a write.
+        let generate = std::env::var("GENERATE_SNAPSHOT").is_ok_and(|v| v == "1");
+
         let expected_path = fixture_dir.join("expected_snapshot.txt");
-        if !expected_path.exists() {
+
+        if generate {
             std::fs::write(&expected_path, &output)
                 .unwrap_or_else(|e| panic!("Failed to write snapshot {}: {}", expected_path.display(), e));
-            // First run: snapshot written, test passes.
+            eprintln!("Snapshot regenerated at {}", expected_path.display());
             return;
         }
+
+        // ASSERT that the expected file exists and matches.
+        assert!(
+            expected_path.exists(),
+            "Snapshot file not found at {}. If this is the first run, generate with:\n\
+             GENERATE_SNAPSHOT=1 cargo test -p bts-map snapshot\n\
+             Then review and commit the resulting file.\n\
+             Actual output would be:\n{}\n",
+            expected_path.display(),
+            output
+        );
 
         let expected = std::fs::read_to_string(&expected_path)
             .unwrap_or_else(|e| panic!("Failed to read snapshot {}: {}", expected_path.display(), e));
 
         assert_eq!(
             output, expected,
-            "Snapshot mismatch! If output is intentionally changed, delete tests/fixtures/expected_snapshot.txt and re-run tests to regenerate.\nActual:\n{}",
+            "Snapshot mismatch! To regenerate during development:\n\
+             GENERATE_SNAPSHOT=1 cargo test -p bts-map snapshot\n\
+             Then review the diff and commit.\n\
+             Actual:\n{}",
             output
         );
     }

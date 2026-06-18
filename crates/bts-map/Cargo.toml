@@ -32,6 +32,10 @@ tree-sitter-cpp      = "=0.23.4"
 # npezza93-tree-sitter-swift =0.4.4 also ships the old Language ABI but its
 # tree_sitter_swift::language() fn returns a Language value that set_language()
 # accepts at runtime against tree-sitter 0.24.6. Verified empirically.
+#
+# TRACKING: This is a non-canonical supply chain (personal fork). Revisit when
+# bumping tree-sitter to >=0.25 — the official tree-sitter-swift crate should then
+# be compatible. Search for "SWIFT-FORK-TRACKING" to find all related code.
 npezza93-tree-sitter-swift = "=0.4.4"
 
 # --- query streaming ---

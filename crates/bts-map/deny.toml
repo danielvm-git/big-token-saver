@@ -1,0 +1,29 @@
+# bts-map cargo-deny configuration
+#
+# The only non-canonical dependency is npezza93-tree-sitter-swift, a personal
+# fork used because the official tree-sitter-swift =0.7.3 ships ABI v15
+# (incompatible with tree-sitter 0.24.6 ABI v14). When tree-sitter core is
+# bumped to 0.25+, switch to the official tree-sitter-swift crate.
+# See: Cargo.toml [dependencies] npezza93-tree-sitter-swift comment.
+
+[sources]
+allow-git = []  # No git dependencies allowed; all must come from crates.io
+
+[advisories]
+vulnerability = "deny"
+unmaintained = "warn"
+unsound = "deny"
+yanked = "deny"
+notice = "warn"
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "Unicode-3.0",
+]
+deny = [
+    "ELv2",     # Hard block: no ELv2 code in shipped artifacts (decision d02)
+    "AGPL-3.0", # Avoid strong copyleft in personal tooling
+]

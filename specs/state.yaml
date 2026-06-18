@@ -1,5 +1,5 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-16 (DISCOVER/ELABORATE technical docs backfilled, source-grounded)
+# Last updated: 2026-06-17 (pre-publish hygiene — 3 bts-map caveats resolved)
 
 session:
   phase: BUILD             # planning complete; every epic task carries a runnable verify
@@ -53,13 +53,15 @@ decisions:
   - id: d11
     text: "e05s03 shipped 10 langs (tree-sitter 0.24.6 + grammars 0.23.x; JS/Go/Java/Ruby/C/C++ added; Swift via npezza93-tree-sitter-swift fork due to ABI-15 clash). Budget via tiktoken-rs (greedy include). Skeleton renderer (simplified, NOT a full grep_ast.TreeContext clone). Snapshot drift-tested (fails on change)."
     caveats: >
-      THREE known issues to address before publishing the crate (tracked, not blockers):
-      (1) PROVENANCE: C/C++/Swift vendored .scm were edited IN-PLACE in vendor/queries/ to add a
-      call_expression ref pattern (aider's upstream has no refs for these — it backfills via pygments).
-      CONVENTIONS requires vendored files stay verbatim and divergent copies live in a separate queries/ dir.
-      Divergence IS marked in headers but is mislocated → relocate. (2) Swift fork crate is non-canonical
-      supply chain → revisit when bumping tree-sitter to 0.25 (would allow official tree-sitter-swift).
-      (3) snapshot test auto-generates expected file if ABSENT → change to fail-if-absent for CI safety.
+      THREE known issues identified before publishing the crate — all addressed 2026-06-17:
+      (1) PROVENANCE: RESOLVED. C/C++/Swift divergent .scm relocated from vendor/queries/ (now
+      verbatim upstream) to a separate queries/ dir. See queries/c-tags.scm, queries/cpp-tags.scm,
+      queries/swift-tags.scm for the working divergent copies. vendor/queries/ is pure verbatim.
+      (2) Swift fork crate: DOCUMENTED + TRACKED. Added deny.toml supply-chain config and
+      SWIFT-FORK-TRACKING comments in Cargo.toml and tags.rs. Cannot resolve until tree-sitter
+      core is bumped to >=0.25 (would allow official tree-sitter-swift with ABI v15).
+      (3) snapshot test: RESOLVED. Now FAILS if expected_snapshot.txt is absent, with a clear
+      error message instructing GENERATE_SNAPSHOT=1 cargo test -p bts-map snapshot to regenerate.
 
 environment:
   ready: true
@@ -88,16 +90,19 @@ handoff: |
   MILESTONES m0 + m1 + m2 COMPLETE — 2026-06-17, branch m1/unifier. 12/15 stories done.
   Only m3 remains (e06 share/publish, e07 backlog) — explicitly demand-driven; pull only if used.
   Commits on m1/unifier: docs(specs) backfill · feat(bts) unifier · chore(specs) spike+cockpit ·
-  feat(bts-map) tracer · feat(bts-map) full repo-map (e05s03; commit pending at handoff time).
+  feat(bts-map) tracer · feat(bts-map) full repo-map (e05s03) · chore(bts-map) pre-publish hygiene.
   SHIPPED:
    - bin/bts (m1): setup/doctor/init/find/src/docs/ai. Gates e02 8/8, e03 6/6, e04 13/13.
    - crates/bts-map (m2): repo-map across 10 langs (Rust/Python/JS/TS/Go/Java/Ruby/C/C++/Swift) ->
      tree-sitter tags -> petgraph -> deterministic PageRank -> tiktoken-budgeted skeleton render.
      Gate 13/13 (per-lang non-empty def+ref, budget, drift-tested snapshot), clippy -D clean.
+     Pre-publish hygiene done (2026-06-17): PROVENANCE fix (divergent .scm in queries/ dir),
+     snapshot test now fails-if-absent (GENERATE_SNAPSHOT=1 escape hatch), Swift fork tracked
+     with deny.toml + SWIFT-FORK-TRACKING markers.
   ORCHESTRATION: Opus orchestrated + ran every gate; Sonnet did ALL source-reading + ALL builds +
   the spike. ~440k sub-agent tokens kept off Opus context. Opus tokens spent only on judgment.
-  KNOWN ISSUES before publishing bts-map (see d11 caveats; a follow-up task is tracked):
-   (1) relocate C/C++/Swift divergent .scm out of vendor/queries/ into a separate queries/ dir
-       (CONVENTIONS: vendored = verbatim); (2) Swift fork crate; (3) snapshot fail-if-absent.
-  RESUME OPTIONS: tackle the 3 bts-map caveats; OR m3/e06 (verify install.sh on Linux + curl|bash
-  installer + CI cross-compile of bts-map) when demand appears; OR ship a v0.1.0 tag of what exists.
+  REMAINING (non-blocking): Swift fork crate (npezza93-tree-sitter-swift) is still non-canonical
+  supply chain — tracked via deny.toml + SWIFT-FORK-TRACKING comments. Requires tree-sitter >=0.25
+  to switch to official tree-sitter-swift. Not a publish blocker.
+  RESUME OPTIONS: m3/e06 (verify install.sh on Linux + curl|bash installer + CI cross-compile of
+  bts-map) when demand appears; OR ship a v0.1.0 tag of what exists.
