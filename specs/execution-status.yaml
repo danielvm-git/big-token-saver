@@ -1,23 +1,23 @@
 # done/pending per story — bigpowers cockpit
-# Updated: 2026-06-15 (after slice-tasks + e01 verification)
-updated: "2026-06-15"
+# Updated: 2026-06-16 (e02 dispatcher built + gate-verified 8/8)
+updated: "2026-06-16"
 
 epics:
   e01:                       # Installer — verified DONE (v0 in repo)
     status: done
     stories: { e01s01: done, e01s02: done, e01s03: done }
-  e02:                       # Dispatcher — next up
-    status: pending
-    stories: { e02s01: pending, e02s02: pending }
-  e03:
-    status: pending
-    stories: { e03s01: pending, e03s02: pending }
-  e04:
-    status: pending
-    stories: { e04s01: pending, e04s02: pending }
-  e05:                       # bts map (Rust) — the one heavy item
-    status: pending
-    stories: { e05s01: pending, e05s02: pending, e05s03: pending }
+  e02:                       # Dispatcher — DONE (bin/bts, 8/8 verifies green, shellcheck+shfmt clean)
+    status: done
+    stories: { e02s01: done, e02s02: done }
+  e03:                       # init — DONE (project-local; delegates hooks to sqz/rtk init per d09)
+    status: done
+    stories: { e03s01: done, e03s02: done }
+  e04:                       # verbs — DONE (find/src/docs/ai; docs = context7 MCP launcher per d08)
+    status: done
+    stories: { e04s01: done, e04s02: done }
+  e05:                       # bts map (Rust) — DONE: 10 langs + tiktoken budget + renderer + snapshot (13/13)
+    status: done
+    stories: { e05s01: done, e05s02: done, e05s03: done }
   e06:
     status: pending
     stories: { e06s01: pending, e06s02: pending }
@@ -27,8 +27,9 @@ epics:
 
 summary:
   total_stories: 15
-  done: 3
-  pending: 11
+  done: 12
+  pending: 2
   backlog: 1
 
-next: e02s01    # kickoff-branch e02/dispatcher -> develop-tdd e02s01
+# m0+m1+m2 COMPLETE. bts map ships 10 langs + budget + snapshot. Only m3 (e06 share, e07 backlog) remains — demand-driven.
+next: e06s01    # m3: cross-platform verify + published curl|bash installer (demand-driven — pull only if used)

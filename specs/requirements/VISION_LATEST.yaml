@@ -1,0 +1,48 @@
+# VISION_LATEST.yaml — north star for big-token-saver / bts
+# Phase: DISCOVER. Produced 2026-06-16 (backfilled; vision was set verbally after the
+# red-team pivot — see specs/state.yaml `pivot` and specs/adr/0001).
+
+project: big-token-saver
+binary: bts
+
+vision: >
+  One command brings my entire AI-coding toolchain to any machine, a single `bts` front
+  door unifies the workflows I repeat behind opinionated defaults, and one owned capability
+  (`bts map`) gives agents a fast, ranked repo map. Personal-first, shareable if it earns it.
+
+problem_statement: >
+  The AI-coding toolchain is scattered across five package managers (brew/cargo/npm/pipx/
+  GitHub-release binaries). Standing it up on a new machine is manual and error-prone, there
+  is no front door, and no per-project wiring for the agents.
+
+# What success looks like (outcomes, not features)
+north_star_outcomes:
+  - "Fresh machine → `bash install.sh` → `mise run doctor` green in one pass."
+  - "I stop remembering which tool does what — `bts <verb>` has the opinionated default."
+  - "`bts init` wires a new project (env + agent hooks) idempotently in seconds."
+  - "`bts map` gives a deterministic, budget-bounded repo map for >=10 languages."
+
+principles:
+  - "Install upstream; never bundle or relink. Shipped code is Apache-2.0 only (ADR-0002)."
+  - "Stand on mise for installation; don't reinvent the engine."
+  - "Shell-first glue; Rust only where there is real computation (ADR-0004)."
+  - "New ideas land as small `bts` verbs — never new subsystems (resist product creep)."
+
+non_goals:
+  - "A token-saving middleware product: no proxy, no command-output interception, no tee store."
+  - "Bundling/redistributing any upstream tool."
+  - "A hand-rolled cross-PM install engine."
+  - "Any managed/hosted/multi-tenant service (would also breach sqz's ELv2 — ADR-0002)."
+
+personas:
+  primary: "The author (Daniel) — daily AI-coding workflow, one install command, fast repo map."
+  secondary: "Other devs who discover it — same toolchain via a curl|bash installer (demand-driven, e06)."
+
+success_horizon: "Personal use immediately; shareable v0.1.0 in ~4-6 focused sessions."
+
+linked:
+  scope: specs/requirements/SCOPE_LATEST.yaml
+  tech_stack: specs/plans/TECH_STACK_LATEST.md
+  adrs: specs/adr/
+  plan: specs/release-plan.yaml
+  state: specs/state.yaml

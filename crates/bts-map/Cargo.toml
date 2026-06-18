@@ -1,0 +1,51 @@
+[package]
+name = "bts-map"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+
+[[bin]]
+name = "bts-map"
+path = "src/main.rs"
+
+[dependencies]
+# --- tree-sitter core ---
+# Pinned to 0.24.6; all grammar crates below use ^0.24 via tree-sitter-language 0.1.x.
+tree-sitter          = "=0.24.6"
+
+# --- grammar crates (all proven to resolve together on tree-sitter 0.24.6) ---
+# spike_findings pins (e05-map.yaml): rust/python/typescript 0.23.x on tree-sitter 0.24.6.
+# Extended set for e05s03 (10 languages):
+#   tree-sitter-go, java, ruby, c, cpp, javascript all use ^0.24 core via tree-sitter-language.
+#   npezza93-tree-sitter-swift uses the old Language API (>=0.22) but resolves fine alongside
+#   0.24.6; it uses tree_sitter_swift::language() (not LANGUAGE constant).
+tree-sitter-rust     = "=0.23.2"
+tree-sitter-python   = "=0.23.6"
+tree-sitter-typescript = "=0.23.2"
+tree-sitter-javascript = "=0.23.1"
+tree-sitter-go       = "=0.23.4"
+tree-sitter-java     = "=0.23.5"
+tree-sitter-ruby     = "=0.23.1"
+tree-sitter-c        = "=0.23.4"
+tree-sitter-cpp      = "=0.23.4"
+# Swift: tree-sitter-swift =0.7.3 ships ABI v15 (incompatible with 0.24.6 ABI v14).
+# npezza93-tree-sitter-swift =0.4.4 also ships the old Language ABI but its
+# tree_sitter_swift::language() fn returns a Language value that set_language()
+# accepts at runtime against tree-sitter 0.24.6. Verified empirically.
+npezza93-tree-sitter-swift = "=0.4.4"
+
+# --- query streaming ---
+# MANDATORY: QueryMatches implements StreamingIterator, not std::Iterator.
+streaming-iterator   = "0.1"
+
+# --- token counting ---
+tiktoken-rs          = "0.5"
+
+# --- CLI / error handling ---
+clap                 = { version = "4", features = ["derive"] }
+petgraph             = "0.6"
+thiserror            = "1"
+anyhow               = "1"
+
+[dev-dependencies]
+insta                = "1"

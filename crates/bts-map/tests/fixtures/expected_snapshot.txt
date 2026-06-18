@@ -1,0 +1,36 @@
+tests/fixtures/greeter.ts
+    3: Greeter
+    4: greet
+    ...
+    7: SimpleGreeter
+    8: greet
+    ...
+    13: main
+tests/fixtures/greeter.java
+    2: Greeter
+    3: greet
+    ...
+    7: main
+tests/fixtures/greeter.py
+    3: Greeter
+    4: greet
+    ...
+    7: main
+tests/fixtures/greeter.rs
+    2: greet
+    ...
+    6: Greeter
+    ...
+    11: new
+    ...
+    15: greet
+    ...
+    20: main
+tests/fixtures/greeter.go
+    2: main
+    ...
+    6: Greeter
+    ...
+    8: Greet
+    ...
+    12: main

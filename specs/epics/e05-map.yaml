@@ -7,11 +7,34 @@ summary: "The single net-new Rust binary: aider PageRank repo-map + vendored .sc
 risks:
   - "tree-sitter ABI coupling (red team's hardest finding): pin each grammar crate to the vendored .scm vintage; verify with a real query per language, not just compilation. Mismatch = silent empty maps."
 
+# Spike-validated 2026-06-17 (specs/archive/spikes/SPIKE-bts-map.md). Grammar pinning is VIABLE.
+spike_findings:
+  verdict: "VIABLE. aider's vendored .scm produce non-empty def+ref captures with the pins below."
+  pins:                       # proven working for rust/python/typescript on tree-sitter 0.24.x
+    tree-sitter: "=0.24.6"
+    tree-sitter-rust: "=0.23.2"
+    tree-sitter-python: "=0.23.6"
+    tree-sitter-typescript: "=0.23.2"
+    streaming-iterator: "0.1"  # MANDATORY dep: QueryMatches is StreamingIterator, not std::Iterator
+  api_gotchas:
+    - "Grammar crates export `LANGUAGE: LanguageFn` constant (use `.into()`), NOT a `language()` fn (gone since 0.22.x)."
+    - "tree-sitter-typescript has NO single entry point: pick LANGUAGE_TYPESCRIPT for .ts, LANGUAGE_TSX for .tsx by extension."
+    - "QueryMatches needs `streaming-iterator` + `while let Some(m) = matches.next()`; `for m in matches` is E0277."
+  silent_failure: >
+    CONFIRMED real but nuanced. tree-sitter 0.24.x rejects unknown node-type/field/structure at
+    Query::new() (compile error). BUT a STRUCTURAL mismatch (valid node types, wrong tree shape)
+    still compiles and returns 0 captures with cargo build passing. Also confirmed: aider's two
+    rust .scm vintages anchor @definition.method to DIFFERENT nodes — both pass a count check, so
+    a count-only test misses wrong-anchor corruption.
+  mandatory_gate: >
+    Per-language test asserting defs>0 AND refs>0 is the MINIMUM. Stronger: assert the def
+    capture's node kind == "identifier" (catches the wrong-anchor vintage drift). Compile-only is insufficient.
+
 stories:
   - id: e05s01
     title: "Rust crate skeleton compiles with a CLI"
     tasks:
-      - desc: "cargo workspace + crates/bts-map builds"
+      - desc: "cargo workspace + crates/bts-map builds with the spike-proven pins (tree-sitter =0.24.6, grammars 0.23.x, streaming-iterator)"
         verify: "cargo build -p bts-map"
       - desc: "bts-map --help documents the [budget] arg"
         verify: "cargo run -q -p bts-map -- --help | grep -qi budget"
@@ -21,7 +44,7 @@ stories:
   - id: e05s02
     title: "Tracer bullet: one Rust file -> ranked tags (proves the whole path)"
     tasks:
-      - desc: "vendor rust-tags.scm (with provenance header) and extract defs/refs from a fixture"
+      - desc: "vendor rust-tags.scm (tree-sitter-language-pack vintage, with provenance header); test asserts defs>0 AND refs>0 AND def node kind=='identifier' (per spike: count-only misses wrong-anchor drift)"
         verify: "cargo test -p bts-map rust_tags"
       - desc: "PageRank output is deterministic for a fixed input"
         verify: "cargo test -p bts-map deterministic"
@@ -31,5 +54,5 @@ stories:
     tasks:
       - desc: "output never exceeds the requested token budget"
         verify: "cargo test -p bts-map budget"
-      - desc: "snapshot map of the fixture repo is stable"
+      - desc: "snapshot map of the fixture repo is stable; each of >=10 langs has a non-empty def+ref test (TS .scm comes from tree-sitter-languages, Swift from tree-sitter-language-pack — vendor BOTH dirs)"
         verify: "cargo test -p bts-map snapshot"

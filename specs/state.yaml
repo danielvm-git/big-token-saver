@@ -1,11 +1,11 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-15 (build-ready after slice-tasks)
+# Last updated: 2026-06-16 (DISCOVER/ELABORATE technical docs backfilled, source-grounded)
 
 session:
   phase: BUILD             # planning complete; every epic task carries a runnable verify
-  active_epic: e02
-  active_story: e02s01
-  last_skill: slice-tasks
+  active_epic: e06           # m0+m1+m2 done; only m3 (e06 share, e07 backlog) remains — demand-driven
+  active_story: e06s01
+  last_skill: develop-tdd    # e05s03 scale-up built by a Sonnet agent, gate 13/13 + drift-tested by Opus
 
 pivot:
   date: 2026-06-15
@@ -34,6 +34,32 @@ decisions:
     text: "bts map is the single owned, net-new capability (aider PageRank + .scm queries), Apache-2.0. Pin grammar crates to match the .scm ABI (red team's hardest technical risk)."
   - id: d07
     text: "Personal-first, shareable. If published, the installer declares dependencies; it does not contain them."
+  - id: d08
+    text: "`bts docs` is NOT a run-and-pipe verb: context7 is an MCP server, not a CLI. e04 redefines `bts docs` as show/launch the context7 MCP config for the active agent."
+    source: "source-grounded read of @upstash/context7-mcp (2026-06-16)"
+  - id: d09
+    text: "`bts init` delegates hook injection to the tools' own installers (`sqz init --only claude --yes`, `rtk init --agent claude --auto-patch`) — it does NOT hand-roll PreToolUse JSON. e03 wires by calling them."
+    source: "source-grounded read of sqz + rtk (2026-06-16); implemented + verified e03 (2026-06-17)"
+    side_effects: >
+      Observed in e03 build: delegation inherits the tools' full init behavior. `sqz init`
+      writes a PROJECT-scoped .claude/settings.local.json (good) but also ensures user-level
+      shell integration (.zshrc hook, zsh completions, ~/.sqz preset — all idempotent).
+      `rtk init` injects rtk instructions into the project's CLAUDE.md and writes .rtk/filters.toml.
+      Neither touches global ~/.claude/settings.json. This is the accepted trade-off of d09
+      (delegate, don't hand-roll). Document in `bts init` help so users aren't surprised.
+  - id: d10
+    text: "e05 grammar pinning PROVEN VIABLE by spike (2026-06-17). Pins: tree-sitter =0.24.6 + tree-sitter-rust/python/typescript 0.23.x + streaming-iterator. Mandatory CI gate = per-language non-empty def+ref AND def node-kind=='identifier'. Silent-empty-map is real only for STRUCTURAL mismatch (0.24.x catches name/field/structure errors at compile time)."
+    source: "specs/archive/spikes/SPIKE-bts-map.md; e05-map.yaml spike_findings; adr/0005 Validation section"
+  - id: d11
+    text: "e05s03 shipped 10 langs (tree-sitter 0.24.6 + grammars 0.23.x; JS/Go/Java/Ruby/C/C++ added; Swift via npezza93-tree-sitter-swift fork due to ABI-15 clash). Budget via tiktoken-rs (greedy include). Skeleton renderer (simplified, NOT a full grep_ast.TreeContext clone). Snapshot drift-tested (fails on change)."
+    caveats: >
+      THREE known issues to address before publishing the crate (tracked, not blockers):
+      (1) PROVENANCE: C/C++/Swift vendored .scm were edited IN-PLACE in vendor/queries/ to add a
+      call_expression ref pattern (aider's upstream has no refs for these — it backfills via pygments).
+      CONVENTIONS requires vendored files stay verbatim and divergent copies live in a separate queries/ dir.
+      Divergence IS marked in headers but is mislocated → relocate. (2) Swift fork crate is non-canonical
+      supply chain → revisit when bumping tree-sitter to 0.25 (would allow official tree-sitter-swift).
+      (3) snapshot test auto-generates expected file if ABSENT → change to fail-if-absent for CI safety.
 
 environment:
   ready: true
@@ -42,18 +68,36 @@ environment:
 
 artifacts:
   done:
-    - mise.toml             # toolchain manifest (source of truth)
-    - install.sh            # mise bootstrap (shellcheck + shfmt clean)
-    - "specs/epics/*.yaml"  # 7 epic shards, 15 stories, every task has a verify
+    - mise.toml                              # toolchain manifest (source of truth)
+    - install.sh                             # mise bootstrap (shellcheck + shfmt clean)
+    - "specs/epics/*.yaml"                   # 7 epic shards, 15 stories, every task has a verify
     - specs/execution-status.yaml
+    - specs/requirements/SCOPE_LATEST.yaml
+    - specs/requirements/VISION_LATEST.yaml  # backfilled 2026-06-16
+    - specs/plans/TECH_STACK_LATEST.md       # backfilled 2026-06-16, source-grounded
+    - "specs/adr/0001..0005-*.md"            # backfilled 2026-06-16 (pivot, ELv2 boundary, ubi, shell-first, map/grammar-pin)
+    - bin/bts                                # shell dispatcher (e02) — DONE 2026-06-16, on branch e02/dispatcher
+    - "bts init (in bin/bts)"                # per-project wiring (e03) — DONE 2026-06-17, project-local, delegates to sqz/rtk init
+    - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
+    - "crates/bts-map/ (e05 COMPLETE)"       # DONE 2026-06-17: 10 langs + tiktoken budget + skeleton renderer + drift-tested snapshot; gate 13/13
   pending:
-    - bin/bts               # shell dispatcher (e02)
-    - "bts init logic"      # per-project wiring (e03)
-    - crates/bts-map/       # the one Rust crate (e05)
+    - "e06 share (cross-platform + published installer)"  # m3 — demand-driven
+    - "e07 backlog"                                       # m3 — parked
 
 handoff: |
-  BUILD-READY. git initialized; mise + shellcheck + shfmt + bats installed.
-  Epic shards sliced into specs/epics/eNN-*.yaml — every task carries a runnable `verify:`.
-  e01 (Installer) is DONE: all three stories' verifies pass (mise run doctor = 12/12 tools ok).
-  Next: kickoff-branch on e02/dispatcher, then develop-tdd e02s01 (bin/bts routing + help/version).
-  bts map (e05) is the only heavy/Rust item; defer until the shell unifier is in daily use.
+  MILESTONES m0 + m1 + m2 COMPLETE — 2026-06-17, branch m1/unifier. 12/15 stories done.
+  Only m3 remains (e06 share/publish, e07 backlog) — explicitly demand-driven; pull only if used.
+  Commits on m1/unifier: docs(specs) backfill · feat(bts) unifier · chore(specs) spike+cockpit ·
+  feat(bts-map) tracer · feat(bts-map) full repo-map (e05s03; commit pending at handoff time).
+  SHIPPED:
+   - bin/bts (m1): setup/doctor/init/find/src/docs/ai. Gates e02 8/8, e03 6/6, e04 13/13.
+   - crates/bts-map (m2): repo-map across 10 langs (Rust/Python/JS/TS/Go/Java/Ruby/C/C++/Swift) ->
+     tree-sitter tags -> petgraph -> deterministic PageRank -> tiktoken-budgeted skeleton render.
+     Gate 13/13 (per-lang non-empty def+ref, budget, drift-tested snapshot), clippy -D clean.
+  ORCHESTRATION: Opus orchestrated + ran every gate; Sonnet did ALL source-reading + ALL builds +
+  the spike. ~440k sub-agent tokens kept off Opus context. Opus tokens spent only on judgment.
+  KNOWN ISSUES before publishing bts-map (see d11 caveats; a follow-up task is tracked):
+   (1) relocate C/C++/Swift divergent .scm out of vendor/queries/ into a separate queries/ dir
+       (CONVENTIONS: vendored = verbatim); (2) Swift fork crate; (3) snapshot fail-if-absent.
+  RESUME OPTIONS: tackle the 3 bts-map caveats; OR m3/e06 (verify install.sh on Linux + curl|bash
+  installer + CI cross-compile of bts-map) when demand appears; OR ship a v0.1.0 tag of what exists.
