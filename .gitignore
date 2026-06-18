@@ -1,9 +1,17 @@
-# Rust (when crates/bts-map lands)
+# Rust build artifacts
 /target
 crates/*/target
 
+# Rust IDE
+.rustup_settings.toml
+
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes
 
 # direnv / mise local overrides
 .direnv/
@@ -15,3 +23,10 @@ crates/*/target
 *~
 .idea/
 .vscode/
+*.sublime-*
+
+# logs
+*.log
+
+# transient artifacts
+diff.txt
