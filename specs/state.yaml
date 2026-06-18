@@ -1,11 +1,14 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-17 (v0.2.0 shipped)
+# Last updated: 2026-06-18 (v0.2.1 — e07 COMPLETE)
+type: feat
+context: infra
 
 session:
-  phase: SHIP              # m0+m1+m2+m3 COMPLETE; v0.2.0 live with binaries + CI
-  active_epic: e07           # only backlog remains — demand-driven
-  active_story: e07s01
-  last_skill: develop-tdd    # e06 completed: release CI + Linux installer verified
+  phase: SHIP              # m0+m1+m2+m3+m4 COMPLETE; v0.2.1 — all epics done
+  active_epic: null
+  active_story: null
+  last_skill: fix-bug          # BUG-20260618 fixed — spec metadata gap resolved
+  active_flow: null
 
 pivot:
   date: 2026-06-15
@@ -83,8 +86,8 @@ artifacts:
     - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
     - "crates/bts-map/ (e05 COMPLETE)"       # DONE 2026-06-17: 10 langs + tiktoken budget + skeleton renderer + drift-tested snapshot; gate 13/13
     - "e06 share (cross-platform + published installer)"  # m3 — DONE; v0.2.0 shipped
-  pending:
-    - "e07 backlog"                                       # parked — demand-driven
+    - "e07 backlog (COMPLETE 2026-06-18)"             # shared profiles + compress + regret learning
+  pending: []
 
 handoff: |
   MILESTONES m0+m1+m2+m3 COMPLETE — v0.2.0 released 2026-06-17.
@@ -101,4 +104,11 @@ handoff: |
      bts-map-linux-x86_64.tar.gz  (430 KB)
    - bin/bts (m1): setup/doctor/init/find/src/docs/ai. Gates e02 8/8, e03 6/6, e04 13/13.
    - crates/bts-map (m2): 10 langs, petgraph PageRank, tiktoken budget, snapshot-tested.
-  ONLY REMAINING: e07 backlog (parked). Pull when daily use creates demand.
+  ALL EPICS COMPLETE: e07 shipped 2026-06-18 with three new capabilities:
+   - `bts config`: shared .bts.toml profiles — global ~/.config/bts/config.toml
+     merged with per-project .bts.toml. Verbs: show, get, set, init.
+   - `bts compress`: shells out to the installed sqz with opinionated defaults.
+     Pipes stdin or reads files; respects token_budget from config.
+   - `bts map` regret learning: records good/bad file selections via
+     `bts map feedback`; bts-map Rust binary adjusts PageRank scores with
+     a multiplicative factor (α=0.3). Feedback stored in ~/.config/bts/map-feedback.json.

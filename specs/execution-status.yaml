@@ -1,6 +1,8 @@
 # done/pending per story — bigpowers cockpit
-# Updated: 2026-06-17 (pre-publish hygiene done: PROVENANCE fix, snapshot fail-if-absent, Swift fork documented)
-updated: "2026-06-17"
+# Updated: 2026-06-18 (e07 COMPLETE: profiles + compress + regret learning)
+type: feat
+context: infra
+updated: "2026-06-18"
 
 epics:
   e01:                       # Installer — verified DONE (v0 in repo)
@@ -26,15 +28,24 @@ epics:
     status: done
     stories: { e06s01: done, e06s02: done }
   e07:
-    status: backlog
-    stories: { e07s01: backlog }
+    status: done
+    stories: { e07s01: done }
+    artifacts:
+      - bin/bts (bts config, bts compress, bts map, bts map feedback)
+      - crates/bts-map/src/feedback.rs (FeedbackDb, regret-learning score adjustments)
+      - crates/bts-map/src/main.rs (main loop: walkdir + feedback wired)
+      - crates/bts-map/src/graph.rs (rank_files accepts Option<&FeedbackDb>)
+      - crates/bts-map/Cargo.toml (walkdir, serde, serde_json deps)
 
 summary:
   total_stories: 15
-  done: 14
+  done: 15
   pending: 0
-  backlog: 1
+  backlog: 0
 
-# m0+m1+m2+m3 COMPLETE. v0.2.0 shipped with binaries + CI + docs.
-# Only e07 backlog (parked) remains — demand-driven.
-next: e07s01    # backlog: pull only when real daily use creates demand
+# ALL EPICS COMPLETE. v0.2.1 — e07 shipped 2026-06-18.
+# Features:
+#   1. Shared .bts.toml profiles: bts config [show|get|set|init]
+#   2. bts compress: shells sqz with opinionated defaults
+#   3. bts map regret learning: feedback-driven PageRank adjustment
+next: null

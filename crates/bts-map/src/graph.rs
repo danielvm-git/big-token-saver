@@ -15,19 +15,29 @@ use std::collections::{HashMap, HashSet};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 
+use crate::feedback::FeedbackDb;
 use crate::tags::{Tag, TagKind};
 
 /// A ranked entry in the output.
 #[derive(Debug, Clone)]
 pub struct RankedFile {
     pub rel_fname: String,
+    /// PageRank score (optionally adjusted by regret-learning feedback).
     pub score: f64,
+    /// Unadjusted PageRank score (before feedback).
+    pub raw_score: f64,
+    /// Feedback adjustment factor (1.0 = no adjustment).
+    pub feedback_factor: f64,
 }
 
 /// Build a directed file-dependency graph from a flat slice of tags, then run
 /// PageRank and return files sorted by descending score (tie-break: file name
 /// ascending for byte-stability on fixed input).
-pub fn rank_files(tags: &[Tag]) -> Vec<RankedFile> {
+///
+/// When `feedback_db` is provided, scores are multiplied by a regret-learning
+/// factor: files with positive feedback are boosted; files with negative feedback
+/// are penalised; files with no feedback are unchanged.
+pub fn rank_files(tags: &[Tag], feedback_db: Option<&FeedbackDb>) -> Vec<RankedFile> {
     // Group tags by (file, name) → kind.
     let mut file_defs: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut file_refs: HashMap<&str, Vec<&str>> = HashMap::new();
@@ -95,9 +105,15 @@ pub fn rank_files(tags: &[Tag]) -> Vec<RankedFile> {
     let mut result: Vec<RankedFile> = files
         .iter()
         .enumerate()
-        .map(|(i, &f)| RankedFile {
-            rel_fname: f.to_string(),
-            score: scores[i],
+        .map(|(i, &f)| {
+            let raw = scores[i];
+            let factor = feedback_db.map(|db| db.factor(f)).unwrap_or(1.0);
+            RankedFile {
+                rel_fname: f.to_string(),
+                score: raw * factor,
+                raw_score: raw,
+                feedback_factor: factor,
+            }
         })
         .collect();
     result.sort_by(|a, b| {

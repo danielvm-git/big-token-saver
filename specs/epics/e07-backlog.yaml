@@ -1,13 +1,37 @@
 epic: e07
+type: feat
+context: domain
 title: "More ideas-on-top (demand-driven backlog)"
 milestone: m3
 wsjf: 2.0
-status: backlog
-summary: "Park future unifier ideas; pull only when real daily use creates the demand."
+status: done
+shipped: 2026-06-18
+summary: "Park future unifier ideas; pulled and completed 2026-06-18."
 
 stories:
   - id: e07s01
-    title: "Backlog — each lands as a small verb, not a new subsystem"
+    title: "Shared profiles + bts compress + regret learning"
+    status: done
     tasks:
-      - desc: "shared .bts.toml profiles; `bts compress` shelling the installed sqz; regret-style learning on `bts map` selections"
-        verify: "true   # backlog placeholder — no verify until a item is pulled into a milestone"
+      - desc: "shared .bts.toml profiles with global + project merge through bts config [show|get|set|init]"
+        verify: "bin/bts config show prints merged env/global/project config; get returns single value; set writes project .bts.toml; init scaffolds ~/.config/bts/config.toml"
+        gates:
+          - "shellcheck passes (0 warnings)"
+          - "bash -n passes"
+          - "bts config show reports source per key"
+          - "bts config set updates project .bts.toml idempotently"
+          - "bts config init creates global config with correct default values"
+      - desc: "bts compress wrapping installed sqz with opinionated defaults and budget awareness"
+        verify: "bin/bts compress delegates to sqz; respects --budget flag and config token_budget; supports stdin and file args"
+        gates:
+          - "bts compress --budget 512 file.txt shells sqz compress"
+          - "echo input | bts compress pipes through sqz"
+          - "budget defaults to BTS_TOKEN_BUDGET when no --budget flag"
+      - desc: "regret-style learning on bts map via feedback JSON + PageRank score adjustment"
+        verify: "bts map feedback --good/--bad records selections; bts-map binary reads feedback and adjusts scores; feedback tests pass"
+        gates:
+          - "bts map feedback --good src/a.rs increments good count in JSON"
+          - "bts map feedback --show displays current feedback state"
+          - "bts map feedback --clear resets all feedback"
+          - "cargo test -p bts-map passes all 16 tests (includes feedback_adjusts_scores, feedback_noop_for_unknown_files, feedback_can_reorder)"
+          - "FeedbackDb::factor() returns 1.0 for unknown files, >1.0 for boosted, <1.0 for penalised"

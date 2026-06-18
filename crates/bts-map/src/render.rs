@@ -57,6 +57,15 @@ pub fn render(ranked: &[RankedFile], all_tags: &[Tag], budget: usize) -> String 
         // Build the block for this file.
         let mut block = String::new();
         block.push_str(fname);
+
+        // Show feedback adjustment when active (factor ≠ 1.0).
+        if (rf.feedback_factor - 1.0).abs() > 1e-10 {
+            let arrow = if rf.feedback_factor > 1.0 { "↑" } else { "↓" };
+            block.push_str(&format!(
+                "  {} ×{:.2} (raw: {:.2})",
+                arrow, rf.feedback_factor, rf.raw_score
+            ));
+        }
         block.push('\n');
 
         let mut prev_line: Option<usize> = None;

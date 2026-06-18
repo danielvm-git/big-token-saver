@@ -1,31 +1,156 @@
 #![deny(unsafe_code)]
 
 mod error;
+mod feedback;
 mod graph;
 mod render;
 mod tags;
 
+use std::fs;
+use std::path::PathBuf;
+
 use anyhow::Result;
 use clap::Parser;
 
+use crate::feedback::FeedbackDb;
+use crate::tags::{extract_tags, Lang, Tag};
+
 /// bts-map — generate a ranked repo map from source tags.
 ///
-/// Reads the current directory (or a specified path) and emits a ranked list
-/// of source files, ordered by PageRank over the def/ref symbol graph.
-/// Output is trimmed to the requested token BUDGET (approximate; default 1024).
+/// Reads the current directory and emits a ranked list of source files,
+/// ordered by PageRank over the def/ref symbol graph. Output is trimmed
+/// to the requested token BUDGET (approximate; default 1024).
+///
+/// Supports regret-style learning: pass --feedback with a path to a
+/// JSON feedback file, and PageRank scores are adjusted based on prior
+/// selections (good files boosted, ignored files penalized).
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Token budget: maximum number of tokens in the ranked output (approximate).
     /// Files are included in PageRank order until the budget is exhausted.
-    #[arg(default_value_t = 1024)]
+    #[arg(short, long, default_value_t = 1024)]
     budget: usize,
+
+    /// Path to a regret-learning feedback JSON file.
+    /// When provided, PageRank scores are adjusted: files with positive
+    /// feedback (--good) are boosted; files with negative feedback (--bad)
+    /// are penalized. Missing or empty files are silently ignored.
+    #[arg(short, long)]
+    feedback: Option<PathBuf>,
+
+    /// Root directory to scan (defaults to current directory).
+    #[arg(default_value = ".")]
+    path: PathBuf,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    println!("bts-map: token budget = {}", cli.budget);
-    println!("(full implementation in e05s03)");
+
+    // Load regret-learning feedback if a path was provided.
+    let feedback_db = cli
+        .feedback
+        .as_ref()
+        .and_then(|p| FeedbackDb::load(p).ok());
+
+    // Collect all source files under the target path.
+    let mut all_tags: Vec<Tag> = Vec::new();
+    collect_tags(&cli.path, &mut all_tags)?;
+
+    if all_tags.is_empty() {
+        eprintln!("bts-map: no source files found under {}", cli.path.display());
+        return Ok(());
+    }
+
+    // Run PageRank (with regret adjustment if feedback is available).
+    let ranked = crate::graph::rank_files(&all_tags, feedback_db.as_ref());
+
+    // Render budget-bounded output.
+    let output = crate::render::render(&ranked, &all_tags, cli.budget);
+    println!("{}", output);
+
+    Ok(())
+}
+
+/// Walk a directory recursively and extract tags from supported source files.
+///
+/// Skips common build/output directories (`.git`, `target`, `node_modules`,
+/// `vendor`, `.direnv`, `dist`, `build`, `__pycache__`, `.tox`) and hidden
+/// directories (those starting with `.` except the root itself) to avoid
+/// scanning generated code and build artifacts.
+fn collect_tags(root: &PathBuf, tags: &mut Vec<Tag>) -> Result<()> {
+    /// Common build/output directory names to skip.
+    const EXCLUDED_DIRS: &[&str] = &[
+        ".git",
+        "target",
+        "node_modules",
+        "vendor",
+        ".direnv",
+        "dist",
+        "build",
+        "__pycache__",
+        ".tox",
+    ];
+
+    fn is_excluded(entry: &walkdir::DirEntry) -> bool {
+        entry.file_type().is_dir()
+            && entry
+                .file_name()
+                .to_str()
+                .map(|name| {
+                    // Skip hidden directories and common build/output names.
+                    name.starts_with('.') || EXCLUDED_DIRS.contains(&name)
+                })
+                .unwrap_or(false)
+    }
+
+    let mut skipped_errors = 0u64;
+    for entry in walkdir::WalkDir::new(root)
+        .follow_links(false)
+        .into_iter()
+        .filter_entry(|e| !is_excluded(e))
+    {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(err) => {
+                if let Some(path) = err.path() {
+                    eprintln!("bts-map: skipping unreadable: {}: {}", path.display(), err);
+                }
+                skipped_errors += 1;
+                continue;
+            }
+        };
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let lang = match Lang::from_ext(&path.to_string_lossy()) {
+            Some(l) => l,
+            None => continue,
+        };
+        let source = match fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(err) => {
+                eprintln!("bts-map: warning: {}: {}", path.display(), err);
+                skipped_errors += 1;
+                continue;
+            }
+        };
+        let rel = match path.strip_prefix(root) {
+            Ok(r) => r.to_string_lossy().to_string(),
+            Err(_) => continue,
+        };
+        match extract_tags(&rel, &source, lang) {
+            Ok(file_tags) => tags.extend(file_tags),
+            Err(e) => {
+                eprintln!("bts-map: warning: {}: {}", rel, e);
+                skipped_errors += 1;
+            }
+        }
+    }
+    if skipped_errors > 0 {
+        eprintln!("bts-map: skipped {} unreadable/invalid file(s)", skipped_errors);
+    }
     Ok(())
 }
 
@@ -35,6 +160,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::feedback::FeedbackDb;
     use crate::graph::rank_files;
     use crate::render::{count_tokens, render};
     use crate::tags::{extract_tags, Lang, TagKind};
@@ -116,8 +242,8 @@ fn main() {
         let mut all_tags = tags_a;
         all_tags.extend(tags_b);
 
-        let run1 = rank_files(&all_tags);
-        let run2 = rank_files(&all_tags);
+        let run1 = rank_files(&all_tags, None);
+        let run2 = rank_files(&all_tags, None);
 
         assert_eq!(run1.len(), run2.len(), "Ranked output length changed between runs");
         for (a, b) in run1.iter().zip(run2.iter()) {
@@ -357,6 +483,88 @@ func main() {
         );
     }
 
+    // ── e07s01: regret-learning feedback tests ────────────────────────────
+
+    /// Files with positive feedback are boosted; negative feedback penalised.
+    #[test]
+    fn feedback_adjusts_scores() {
+        let tags_a = extract_tags("src/a.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let tags_b = extract_tags("src/b.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let mut all_tags = tags_a;
+        all_tags.extend(tags_b);
+
+        // No feedback: same as baseline.
+        let baseline = rank_files(&all_tags, None);
+
+        // Good feedback on "src/a.rs" should boost it.
+        let mut db = FeedbackDb::default();
+        db.record("src/a.rs", true);
+        db.record("src/a.rs", true);
+        let boosted = rank_files(&all_tags, Some(&db));
+
+        let a_baseline = baseline.iter().find(|r| r.rel_fname == "src/a.rs").unwrap();
+        let a_boosted = boosted.iter().find(|r| r.rel_fname == "src/a.rs").unwrap();
+        assert!(a_boosted.score > a_baseline.score,
+            "Expected src/a.rs to be boosted (was {}, now {})",
+            a_baseline.score, a_boosted.score);
+
+        // Bad feedback on "src/a.rs" should penalise it.
+        let mut db2 = FeedbackDb::default();
+        db2.record("src/a.rs", false);
+        db2.record("src/a.rs", false);
+        let penalised = rank_files(&all_tags, Some(&db2));
+
+        let a_penalised = penalised.iter().find(|r| r.rel_fname == "src/a.rs").unwrap();
+        assert!(a_penalised.score < a_baseline.score,
+            "Expected src/a.rs to be penalised (was {}, now {})",
+            a_baseline.score, a_penalised.score);
+    }
+
+    /// Files with no feedback are unaffected (factor = 1.0).
+    #[test]
+    fn feedback_noop_for_unknown_files() {
+        let tags = extract_tags("src/a.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let baseline = rank_files(&tags, None);
+        let empty_db = FeedbackDb::default();
+        let with_empty = rank_files(&tags, Some(&empty_db));
+
+        for (b, w) in baseline.iter().zip(with_empty.iter()) {
+            assert_eq!(b.rel_fname, w.rel_fname);
+            assert!((b.score - w.score).abs() < 1e-10,
+                "Empty feedback should not change scores: {} had {}, now {}",
+                b.rel_fname, b.score, w.score);
+        }
+    }
+
+    /// Feedback can invert the ranking when applied strongly enough.
+    #[test]
+    fn feedback_can_reorder() {
+        let tags_a = extract_tags("src/a.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let tags_b = extract_tags("src/b.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let mut all_tags = tags_a;
+        all_tags.extend(tags_b);
+
+        let baseline = rank_files(&all_tags, None);
+        let first_baseline = &baseline[0].rel_fname;
+
+        // Heavily penalise the top-ranked file and boost the other.
+        let other = if first_baseline == "src/a.rs" { "src/b.rs" } else { "src/a.rs" };
+
+        let mut db = FeedbackDb::default();
+        for _ in 0..10 {
+            db.record(first_baseline, false); // bad
+            db.record(other, true);            // good
+        }
+        let reordered = rank_files(&all_tags, Some(&db));
+
+        // The reordered top should be the one we boosted.
+        assert_eq!(
+            reordered[0].rel_fname, other,
+            "Expected {} to be first after feedback, but got {}",
+            other, reordered[0].rel_fname
+        );
+    }
+
     // ── e05s03: token budget test ──────────────────────────────────────────
 
     /// Budget test: rendered output must never exceed the requested budget.
@@ -370,7 +578,7 @@ func main() {
         let mut all_tags = tags_a;
         all_tags.extend(tags_b);
 
-        let ranked = rank_files(&all_tags);
+        let ranked = rank_files(&all_tags, None);
 
         for &budget in &[50, 100, 200, 512, 1024] {
             let output = render(&ranked, &all_tags, budget);
@@ -420,7 +628,7 @@ func main() {
             all_tags.extend(tags);
         }
 
-        let ranked = rank_files(&all_tags);
+        let ranked = rank_files(&all_tags, None);
         let output = render(&ranked, &all_tags, 256);
 
         // Check for GENERATE_SNAPSHOT env var to allow explicit regeneration.
