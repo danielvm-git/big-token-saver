@@ -376,6 +376,9 @@ bts_compress() {
 				budget="${1#*=}"
 				shift
 				;;
+			--stdin)
+				shift
+				;;
 			-*)
 				echo "Unknown flag: $1" >&2
 				echo "Usage: bts compress [--stdin] [--budget N] [file...]" >&2

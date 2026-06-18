@@ -6,3 +6,10 @@ bugs:
     scope: specs
     summary: "Missing type: and context: metadata in e07 spec YAMLs"
     file: specs/bugs/BUG-20260618-spec-metadata.md
+  - bug_id: BUG-20260618T044939
+    date: 2026-06-18
+    severity: low
+    priority: p3
+    scope: bts-dispatcher
+    summary: "bts compress --stdin rejects the flag it advertises in usage"
+    file: specs/bugs/BUG-20260618T044939-stdin-flag.md
