@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "version": "0.0.0-development",
+  "description": "Toolchain bootstrapper + thin unifier for AI-assisted coding (bts). Rust crate: bts-map."
+}
