@@ -1,5 +1,30 @@
 {
-  "private": true,
+  "name": "big-token-saver",
   "version": "0.0.0-development",
-  "description": "Toolchain bootstrapper + thin unifier for AI-assisted coding (bts). Rust crate: bts-map."
+  "description": "Toolchain bootstrapper + thin unifier for AI-assisted coding. One command installs your whole AI-coding toolchain and unifies it behind a single `bts` front door with opinionated defaults. Includes bts-map — a compiled Rust repo-map engine (PageRank + tree-sitter, 10 languages).",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielvm-git/big-token-saver"
+  },
+  "bin": {
+    "bts": "bin/bts"
+  },
+  "files": [
+    "bin/",
+    "install.sh",
+    "mise.toml"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "toolchain",
+    "repo-map",
+    "pagerank",
+    "tree-sitter",
+    "coding-agent",
+    "cli"
+  ]
 }
