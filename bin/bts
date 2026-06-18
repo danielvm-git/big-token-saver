@@ -359,9 +359,11 @@ EOF
 
 # ── e07s01: bts compress — shell the installed sqz ──────────────────────────
 
-# bts compress [--budget N] [file...]
+# bts compress [--stdin] [--budget N] [file...]
 # Wraps sqz (squeeze) with opinionated defaults for AI context compression.
 # If no files, reads from stdin (pipe detection via [ ! -t 0 ]).
+# --stdin is a no-op: pipe detection is automatic; the flag exists only to
+# prevent "Unknown flag" errors when scripts pass it explicitly.
 bts_compress() {
 	local budget=""
 	local files=()

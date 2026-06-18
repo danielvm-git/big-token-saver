@@ -85,6 +85,21 @@ assert_ok "compress --stdin --budget N"    $BTS compress --stdin --budget 512 <<
 assert_ok "compress --budget N --stdin"    $BTS compress --budget 512 --stdin <<< "test"
 assert_ok "compress pipe without flag"      $BTS compress <<< "test"
 
+# negative: --stdin with missing file should not fail on flag parsing
+output=$($BTS compress --stdin /nonexistent_file 2>&1) || true
+case "$output" in
+  *"MISSING"*) echo "ok       compress --stdin with missing file (MISSING, not flag error)"; PASS=$((PASS + 1)) ;;
+  *"Unknown flag"*) echo "FAIL     compress --stdin with missing file (got flag error)"; FAIL=$((FAIL + 1)) ;;
+  *) echo "FAIL     compress --stdin with missing file (unexpected: $output)"; FAIL=$((FAIL + 1)) ;;
+esac
+
+# negative: usage message documents --stdin flag
+output=$($BTS compress --nonexistent-flag 2>&1) || true
+case "$output" in
+  *"--stdin"*) echo "ok       compress usage message includes --stdin"; PASS=$((PASS + 1)) ;;
+  *) echo "FAIL     compress usage message missing --stdin"; FAIL=$((FAIL + 1)) ;;
+esac
+
 # bts help
 exit_code=0
 $BTS -h >/dev/null 2>&1 || exit_code=$?
