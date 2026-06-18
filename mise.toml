@@ -92,8 +92,8 @@ assert_eq "bts -h exits 0" "0" "$exit_code"
 
 # bts version (via bts -V or bts --version)
 exit_code=0
-$BTS -h >/dev/null 2>&1 || exit_code=$?
-assert_eq "bts help exits clean" "0" "$exit_code"
+$BTS --version >/dev/null 2>&1 || exit_code=$?
+assert_eq "bts --version exits 0" "0" "$exit_code"
 
 echo "--- bts-map Rust crate ---"
 cargo test --quiet 2>&1 | tail -5
