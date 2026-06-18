@@ -16,6 +16,6 @@ bugs:
     status: fixed
     risk_level: low
     approach: "Add --stdin case arm to flag parser"
-    hardening: "mise run test task with 3 --stdin regression smoke tests"
-    commit_message: "fix(bts): implement --stdin flag in compress verb"
+    hardening: "mise run test task with 8 smoke tests (3 positive permutations, 2 negative edge cases, 3 baseline)"
+    commit_message: "fix(bts): implement --stdin flag in compress verb (4 commits)"
     files_changed: ["bin/bts", "mise.toml"]
