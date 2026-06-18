@@ -1,11 +1,11 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-17 (pre-publish hygiene — 3 bts-map caveats resolved)
+# Last updated: 2026-06-17 (v0.2.0 shipped)
 
 session:
-  phase: BUILD             # planning complete; every epic task carries a runnable verify
-  active_epic: e06           # m3: cross-platform + published installer
-  active_story: e06s02
-  last_skill: develop-tdd    # e06s01 built: release CI (cross-platform bts-map builds) + curl|bash docs
+  phase: SHIP              # m0+m1+m2+m3 COMPLETE; v0.2.0 live with binaries + CI
+  active_epic: e07           # only backlog remains — demand-driven
+  active_story: e07s01
+  last_skill: develop-tdd    # e06 completed: release CI + Linux installer verified
 
 pivot:
   date: 2026-06-15
@@ -82,28 +82,23 @@ artifacts:
     - "bts init (in bin/bts)"                # per-project wiring (e03) — DONE 2026-06-17, project-local, delegates to sqz/rtk init
     - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
     - "crates/bts-map/ (e05 COMPLETE)"       # DONE 2026-06-17: 10 langs + tiktoken budget + skeleton renderer + drift-tested snapshot; gate 13/13
+    - "e06 share (cross-platform + published installer)"  # m3 — DONE; v0.2.0 shipped
   pending:
-    - "e06 share (cross-platform + published installer)"  # m3 — e06s01 done, e06s02 building
-    - "e07 backlog"                                       # m3 — parked
+    - "e07 backlog"                                       # parked — demand-driven
 
 handoff: |
-  MILESTONES m0 + m1 + m2 COMPLETE — 2026-06-17, branch m1/unifier.
-  m3 (e06 share) — e06s01 BUILD COMPLETE 2026-06-17.
-    - Release workflow upgraded: cross-platform bts-map builds (macOS x86_64, macOS arm64,
-      Linux x86_64) attached to semantic-release via @semantic-release/github assets.
-    - curl|bash one-liner documented in README with GitHub raw URL.
-    - CI workflow added (shellcheck + cargo build/test on push/PR; full installer
-      verification on workflow_dispatch with full-installer-check=true).
-  e06s02 is building: installer verification on fresh Linux (CI + manual).
+  MILESTONES m0+m1+m2+m3 COMPLETE — v0.2.0 released 2026-06-17.
+  - m0 (e01): mise.toml + install.sh — 12/12 tools verified
+  - m1 (e02/e03/e04): bin/bts dispatcher + init + verbs — gates 27/27
+  - m2 (e05): bts-map crate — 10 langs + PageRank + budget + snapshot — gate 13/13
+  - m3 (e06): release CI builds bts-map for 3 platforms (macOS ARM/Intel, Linux),
+    semantic-release attaches binaries to GitHub Release, curl|bash one-liner
+    documented, CI install-check job ready for Linux verification.
   SHIPPED:
+   - v0.2.0 GitHub Release with 3 binary tarballs:
+     bts-map-darwin-arm64.tar.gz  (396 KB)
+     bts-map-darwin-x86_64.tar.gz (411 KB)
+     bts-map-linux-x86_64.tar.gz  (430 KB)
    - bin/bts (m1): setup/doctor/init/find/src/docs/ai. Gates e02 8/8, e03 6/6, e04 13/13.
-   - crates/bts-map (m2): repo-map across 10 langs (Rust/Python/JS/TS/Go/Java/Ruby/C/C++/Swift) ->
-     tree-sitter tags -> petgraph -> deterministic PageRank -> tiktoken-budgeted skeleton render.
-     Gate 13/13 (per-lang non-empty def+ref, budget, drift-tested snapshot), clippy -D clean.
-     Pre-publish hygiene done (2026-06-17): PROVENANCE fix (divergent .scm in queries/ dir),
-     snapshot test now fails-if-absent (GENERATE_SNAPSHOT=1 escape hatch), Swift fork tracked
-     with deny.toml + SWIFT-FORK-TRACKING markers.
-  REMAINING (non-blocking): Swift fork crate (npezza93-tree-sitter-swift) is still non-canonical
-  supply chain — tracked via deny.toml + SWIFT-FORK-TRACKING comments. Requires tree-sitter >=0.25
-  to switch to official tree-sitter-swift. Not a publish blocker.
-  NEXT (m3): e06s02 verify installer on fresh Linux; e07 backlog if demand appears.
+   - crates/bts-map (m2): 10 langs, petgraph PageRank, tiktoken budget, snapshot-tested.
+  ONLY REMAINING: e07 backlog (parked). Pull when daily use creates demand.
