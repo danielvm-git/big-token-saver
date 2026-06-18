@@ -1,3 +1,11 @@
+# Release pipeline: build bts-map for every supported target, then
+# create a semantic-release (changelog + tag + GitHub Release) with
+# binaries attached.
+#
+# Triggers:
+#   - push to main  (semantic-release decides if a release is warranted)
+#   - workflow_dispatch  (manual trigger)
+
 name: Release
 on:
   push:
@@ -10,7 +18,51 @@ permissions:
   pull-requests: write
 
 jobs:
+  # ── Cross-compile bts-map for every supported platform ──────────────────
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            os: macos-13
+            suffix: darwin-x86_64
+          - target: aarch64-apple-darwin
+            os: macos-14
+            suffix: darwin-arm64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            suffix: linux-x86_64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rustup target
+        run: rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build bts-map (release)
+        run: cargo build -p bts-map --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        run: |
+          mkdir -p artifacts
+          BIN="bts-map-${{ matrix.suffix }}"
+          cp "target/${{ matrix.target }}/release/bts-map" "artifacts/$BIN"
+          tar czf "artifacts/$BIN.tar.gz" -C artifacts "$BIN"
+          rm "artifacts/$BIN"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bts-map-${{ matrix.suffix }}
+          path: artifacts/bts-map-${{ matrix.suffix }}.tar.gz
+          if-no-files-found: error
+
+  # ── Create GitHub release (via semantic-release) with binaries attached ──
   release:
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +73,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -name "*.tar.gz" -exec cp {} release-assets/ \;
+          ls -lh release-assets/
 
       - name: Semantic Release
         run: npx semantic-release

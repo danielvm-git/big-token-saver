@@ -23,8 +23,17 @@ All declared in one file: [mise.toml](mise.toml).
 
 ## Install
 
+One command, fresh machine:
+
 ```sh
-bash install.sh        # installs the mise engine if needed, then the whole set
+curl -fsSL https://raw.githubusercontent.com/danielvm-git/big-token-saver/main/install.sh | bash
+mise run doctor        # verify everything resolved
+```
+
+Or from a local clone:
+
+```sh
+bash install.sh        # local install
 mise run doctor        # verify everything resolved
 ```
 
@@ -40,6 +49,16 @@ bts docs <lib>         # context7 live docs
 bts ai                 # launch your agent with hooks + token budget pre-loaded
 bts map [budget]       # ⭐ ranked, token-budgeted repo map (the one original piece)
 ```
+
+## Downloads
+
+Pre-built `bts-map` binaries for each release are attached to [GitHub Releases](https://github.com/danielvm-git/big-token-saver/releases):
+
+| Platform | Binary |
+|---|---|
+| macOS (Intel) | `bts-map-darwin-x86_64.tar.gz` |
+| macOS (Apple Silicon) | `bts-map-darwin-arm64.tar.gz` |
+| Linux (x86_64) | `bts-map-linux-x86_64.tar.gz` |
 
 ## How it's built
 

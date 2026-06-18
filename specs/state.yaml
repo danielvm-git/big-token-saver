@@ -3,9 +3,9 @@
 
 session:
   phase: BUILD             # planning complete; every epic task carries a runnable verify
-  active_epic: e06           # m0+m1+m2 done; only m3 (e06 share, e07 backlog) remains — demand-driven
-  active_story: e06s01
-  last_skill: develop-tdd    # e05s03 scale-up built by a Sonnet agent, gate 13/13 + drift-tested by Opus
+  active_epic: e06           # m3: cross-platform + published installer
+  active_story: e06s02
+  last_skill: develop-tdd    # e06s01 built: release CI (cross-platform bts-map builds) + curl|bash docs
 
 pivot:
   date: 2026-06-15
@@ -83,14 +83,18 @@ artifacts:
     - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
     - "crates/bts-map/ (e05 COMPLETE)"       # DONE 2026-06-17: 10 langs + tiktoken budget + skeleton renderer + drift-tested snapshot; gate 13/13
   pending:
-    - "e06 share (cross-platform + published installer)"  # m3 — demand-driven
+    - "e06 share (cross-platform + published installer)"  # m3 — e06s01 done, e06s02 building
     - "e07 backlog"                                       # m3 — parked
 
 handoff: |
-  MILESTONES m0 + m1 + m2 COMPLETE — 2026-06-17, branch m1/unifier. 12/15 stories done.
-  Only m3 remains (e06 share/publish, e07 backlog) — explicitly demand-driven; pull only if used.
-  Commits on m1/unifier: docs(specs) backfill · feat(bts) unifier · chore(specs) spike+cockpit ·
-  feat(bts-map) tracer · feat(bts-map) full repo-map (e05s03) · chore(bts-map) pre-publish hygiene.
+  MILESTONES m0 + m1 + m2 COMPLETE — 2026-06-17, branch m1/unifier.
+  m3 (e06 share) — e06s01 BUILD COMPLETE 2026-06-17.
+    - Release workflow upgraded: cross-platform bts-map builds (macOS x86_64, macOS arm64,
+      Linux x86_64) attached to semantic-release via @semantic-release/github assets.
+    - curl|bash one-liner documented in README with GitHub raw URL.
+    - CI workflow added (shellcheck + cargo build/test on push/PR; full installer
+      verification on workflow_dispatch with full-installer-check=true).
+  e06s02 is building: installer verification on fresh Linux (CI + manual).
   SHIPPED:
    - bin/bts (m1): setup/doctor/init/find/src/docs/ai. Gates e02 8/8, e03 6/6, e04 13/13.
    - crates/bts-map (m2): repo-map across 10 langs (Rust/Python/JS/TS/Go/Java/Ruby/C/C++/Swift) ->
@@ -99,10 +103,7 @@ handoff: |
      Pre-publish hygiene done (2026-06-17): PROVENANCE fix (divergent .scm in queries/ dir),
      snapshot test now fails-if-absent (GENERATE_SNAPSHOT=1 escape hatch), Swift fork tracked
      with deny.toml + SWIFT-FORK-TRACKING markers.
-  ORCHESTRATION: Opus orchestrated + ran every gate; Sonnet did ALL source-reading + ALL builds +
-  the spike. ~440k sub-agent tokens kept off Opus context. Opus tokens spent only on judgment.
   REMAINING (non-blocking): Swift fork crate (npezza93-tree-sitter-swift) is still non-canonical
   supply chain — tracked via deny.toml + SWIFT-FORK-TRACKING comments. Requires tree-sitter >=0.25
   to switch to official tree-sitter-swift. Not a publish blocker.
-  RESUME OPTIONS: m3/e06 (verify install.sh on Linux + curl|bash installer + CI cross-compile of
-  bts-map) when demand appears; OR ship a v0.1.0 tag of what exists.
+  NEXT (m3): e06s02 verify installer on fresh Linux; e07 backlog if demand appears.

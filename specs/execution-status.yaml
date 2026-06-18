@@ -23,8 +23,8 @@ epics:
       snapshot_fail: done    # expected_snapshot.txt absent -> test FAILS with clear instructions
       swift_fork: done       # Tracked with deny.toml + SWIFT-FORK-TRACKING comments (blocked on ts 0.25)
   e06:
-    status: pending
-    stories: { e06s01: pending, e06s02: pending }
+    status: building
+    stories: { e06s01: done, e06s02: building }
   e07:
     status: backlog
     stories: { e07s01: backlog }
@@ -36,4 +36,4 @@ summary:
   backlog: 1
 
 # m0+m1+m2 COMPLETE. Pre-publish hygiene done (2026-06-17). Only m3 (e06 share, e07 backlog) remains — demand-driven.
-next: e06s01    # m3: cross-platform verify + published curl|bash installer (demand-driven — pull only if used)
+next: e06s02    # m3: installer verified on Linux (CI + manual)

@@ -2,7 +2,7 @@
 # bts — single-command toolchain installer.
 # Installs the `mise` engine if missing, then the entire set from mise.toml.
 #
-#   curl -fsSL https://raw.githubusercontent.com/<you>/big-token-saver/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/danielvm-git/big-token-saver/main/install.sh | bash
 #   # or locally:
 #   bash install.sh
 set -euo pipefail
