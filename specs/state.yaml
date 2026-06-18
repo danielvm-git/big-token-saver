@@ -5,10 +5,10 @@ context: infra
 
 session:
   phase: SHIP              # m0+m1+m2+m3+m4 COMPLETE; v0.2.1 — all epics done
-  active_epic: null
-  active_story: null
-  last_skill: fix-bug          # BUG-20260618 fixed — spec metadata gap resolved
-  active_flow: null
+  active_epic: e06
+  active_story: e06s03
+  last_skill: change-request    # e06s03 (npm distribution) added to e06
+  active_flow: build_epic
 
 pivot:
   date: 2026-06-15
@@ -89,6 +89,15 @@ artifacts:
     - "e07 backlog (COMPLETE 2026-06-18)"             # shared profiles + compress + regret learning
   pending: []
 
+epic_cycle:
+  epic: e06
+  story: e06s03
+  step: 2
+  story_bcps: 3
+
+metrics:
+  story_start: "2026-06-18T11:15:29Z"
+
 handoff: |
   MILESTONES m0+m1+m2+m3 COMPLETE — v0.2.0 released 2026-06-17.
   - m0 (e01): mise.toml + install.sh — 12/12 tools verified
@@ -97,6 +106,9 @@ handoff: |
   - m3 (e06): release CI builds bts-map for 3 platforms (macOS ARM/Intel, Linux),
     semantic-release attaches binaries to GitHub Release, curl|bash one-liner
     documented, CI install-check job ready for Linux verification.
+  STEP 2 (plan-work) COMPLETE. Plan written to specs/epics/e06-share/e06s03-*.md + tasks.yaml.
+  4 steps, 3 BCPs. Ready for kickoff-branch.
+  On main — kickoff-branch in step 3 will create worktree.
   SHIPPED:
    - v0.2.0 GitHub Release with 3 binary tarballs:
      bts-map-darwin-arm64.tar.gz  (396 KB)
