@@ -92,7 +92,7 @@ artifacts:
 epic_cycle:
   epic: e06
   story: e06s03
-  step: 2
+  step: 3
   story_bcps: 3
 
 metrics:
@@ -106,9 +106,9 @@ handoff: |
   - m3 (e06): release CI builds bts-map for 3 platforms (macOS ARM/Intel, Linux),
     semantic-release attaches binaries to GitHub Release, curl|bash one-liner
     documented, CI install-check job ready for Linux verification.
-  STEP 2 (plan-work) COMPLETE. Plan written to specs/epics/e06-share/e06s03-*.md + tasks.yaml.
-  4 steps, 3 BCPs. Ready for kickoff-branch.
-  On main — kickoff-branch in step 3 will create worktree.
+  STEP 3 (kickoff-branch) COMPLETE. Worktree at ../e06s03-npm-distribution.
+  Branch: e06s03-npm-distribution. Baseline: 16 tests passed, 0 failed.
+  Next: develop-tdd (step 4).
   SHIPPED:
    - v0.2.0 GitHub Release with 3 binary tarballs:
      bts-map-darwin-arm64.tar.gz  (396 KB)
