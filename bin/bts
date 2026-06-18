@@ -472,6 +472,19 @@ bts_map() {
 		feedback_flag=("--feedback" "${BTS_FEEDBACK_FILE}")
 	fi
 
+	# Resolve platform suffix for bundled npm binaries.
+	# Maps uname -sm to the suffix used in CI artifact names.
+	_bts_platform_suffix() {
+		local os arch
+		os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+		arch="$(uname -m)"
+		case "${arch}" in
+			arm64|aarch64) arch="arm64" ;;
+			x86_64|amd64)   arch="x86_64" ;;
+		esac
+		echo "${os}-${arch}"
+	}
+
 	# Locate bts-map binary.
 	local bts_map_bin="${HERE}/../target/release/bts-map"
 	if [ ! -x "${bts_map_bin}" ]; then
@@ -481,6 +494,13 @@ bts_map() {
 	if [ ! -x "${bts_map_bin}" ]; then
 		# Try debug build.
 		bts_map_bin="${HERE}/../target/debug/bts-map"
+	fi
+	# Try bundled npm binary (same dir as this script).
+	if [ ! -x "${bts_map_bin}" ]; then
+		local bundled="${HERE}/bts-map-$(_bts_platform_suffix)"
+		if [ -x "${bundled}" ]; then
+			bts_map_bin="${bundled}"
+		fi
 	fi
 	# Also try mise/cargo path (if installed globally).
 	if [ ! -x "${bts_map_bin}" ]; then
