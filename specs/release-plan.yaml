@@ -102,7 +102,7 @@ epics:
     title: "bts map — the owned repo-map capability (Rust)"
     milestone: m2
     size: L
-    status: ready
+    status: done             # 10 langs + budget + renderer + snapshot; gate 13/13 (2026-06-17)
     description: >
       The single net-new Rust binary. Vendor aider's tree-sitter tag queries (.scm)
       with correct per-grammar attribution (MIT/Apache mix, not monolithic Apache).

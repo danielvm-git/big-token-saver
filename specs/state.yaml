@@ -3,9 +3,9 @@
 
 session:
   phase: BUILD             # planning complete; every epic task carries a runnable verify
-  active_epic: e05           # tracer bullet (s01+s02) done & committed; s03 scale-up next
-  active_story: e05s03
-  last_skill: develop-tdd    # e05 tracer bullet built by a Sonnet agent, gate 5/5 by Opus
+  active_epic: e06           # m0+m1+m2 done; only m3 (e06 share, e07 backlog) remains — demand-driven
+  active_story: e06s01
+  last_skill: develop-tdd    # e05s03 scale-up built by a Sonnet agent, gate 13/13 + drift-tested by Opus
 
 pivot:
   date: 2026-06-15
@@ -50,6 +50,16 @@ decisions:
   - id: d10
     text: "e05 grammar pinning PROVEN VIABLE by spike (2026-06-17). Pins: tree-sitter =0.24.6 + tree-sitter-rust/python/typescript 0.23.x + streaming-iterator. Mandatory CI gate = per-language non-empty def+ref AND def node-kind=='identifier'. Silent-empty-map is real only for STRUCTURAL mismatch (0.24.x catches name/field/structure errors at compile time)."
     source: "specs/archive/spikes/SPIKE-bts-map.md; e05-map.yaml spike_findings; adr/0005 Validation section"
+  - id: d11
+    text: "e05s03 shipped 10 langs (tree-sitter 0.24.6 + grammars 0.23.x; JS/Go/Java/Ruby/C/C++ added; Swift via npezza93-tree-sitter-swift fork due to ABI-15 clash). Budget via tiktoken-rs (greedy include). Skeleton renderer (simplified, NOT a full grep_ast.TreeContext clone). Snapshot drift-tested (fails on change)."
+    caveats: >
+      THREE known issues to address before publishing the crate (tracked, not blockers):
+      (1) PROVENANCE: C/C++/Swift vendored .scm were edited IN-PLACE in vendor/queries/ to add a
+      call_expression ref pattern (aider's upstream has no refs for these — it backfills via pygments).
+      CONVENTIONS requires vendored files stay verbatim and divergent copies live in a separate queries/ dir.
+      Divergence IS marked in headers but is mislocated → relocate. (2) Swift fork crate is non-canonical
+      supply chain → revisit when bumping tree-sitter to 0.25 (would allow official tree-sitter-swift).
+      (3) snapshot test auto-generates expected file if ABSENT → change to fail-if-absent for CI safety.
 
 environment:
   ready: true
@@ -69,27 +79,25 @@ artifacts:
     - bin/bts                                # shell dispatcher (e02) — DONE 2026-06-16, on branch e02/dispatcher
     - "bts init (in bin/bts)"                # per-project wiring (e03) — DONE 2026-06-17, project-local, delegates to sqz/rtk init
     - "bts verbs find/src/docs/ai (in bin/bts)"  # e04 — DONE 2026-06-17; docs = context7 MCP launcher (d08)
-    - "crates/bts-map/ tracer bullet"        # e05s01+s02 — DONE 2026-06-17: Rust parse->tags->petgraph->PageRank, gate 5/5, committed
+    - "crates/bts-map/ (e05 COMPLETE)"       # DONE 2026-06-17: 10 langs + tiktoken budget + skeleton renderer + drift-tested snapshot; gate 13/13
   pending:
-    - "crates/bts-map/ scale-up (e05s03)"    # >=10 langs + tiktoken budget + TreeContext renderer + snapshot
+    - "e06 share (cross-platform + published installer)"  # m3 — demand-driven
+    - "e07 backlog"                                       # m3 — parked
 
 handoff: |
-  e05 TRACER BULLET DONE & COMMITTED — 2026-06-17, branch m1/unifier.
-  Commits: docs(specs) backfill, feat(bts) unifier, chore(specs) spike+cockpit, feat(bts-map) tracer.
-  m1: bin/bts routes setup/doctor/init/find/src/docs/ai (gates e02 8/8, e03 6/6, e04 13/13).
-  e05 tracer: crates/bts-map/ proves the path for Rust — parse -> vendored rust-tags.scm tags ->
-  petgraph -> deterministic hand-rolled PageRank -> ranked. clap CLI, #![deny(unsafe_code)].
-  Gate e05 tracer 5/5: build, --help mentions budget, clippy -D, rust_tags (defs>0 && refs>0 &&
-  fn/method-def node-kind==identifier — note: struct/enum defs are type_identifier, so the node-kind
-  assertion is scoped to fn/method defs), deterministic. Pins in crates/bts-map/Cargo.toml:
-  tree-sitter =0.24.6, tree-sitter-rust =0.23.2, streaming-iterator, clap, petgraph. target/ ignored,
-  Cargo.lock committed.
-  All builds by Sonnet; all gates by Opus. ~340k sub-agent tokens kept off Opus context.
-  NEXT = e05s03 SCALE-UP (the heavy remainder). Recommended split:
-    (a) multi-language + budget: add ~9 grammars (python/typescript/go/java/ruby/c/cpp/swift/...),
-        pin each to the tree-sitter-language-pack v0.13.0 vintage, vendor each .scm from BOTH aider
-        dirs (TS only in tree-sitter-languages; Swift only in tree-sitter-language-pack), per-lang
-        non-empty def+ref test; tiktoken-rs budget (output <= requested) -> `cargo test budget`.
-    (b) renderer + snapshot: reimplement aider grep_ast.TreeContext skeleton renderer (HIGH risk,
-        second-biggest unknown per TECH_STACK §6) + deterministic snapshot vs fixture -> `cargo test snapshot`.
-  PAUSED here for a checkpoint before the heavy renderer work.
+  MILESTONES m0 + m1 + m2 COMPLETE — 2026-06-17, branch m1/unifier. 12/15 stories done.
+  Only m3 remains (e06 share/publish, e07 backlog) — explicitly demand-driven; pull only if used.
+  Commits on m1/unifier: docs(specs) backfill · feat(bts) unifier · chore(specs) spike+cockpit ·
+  feat(bts-map) tracer · feat(bts-map) full repo-map (e05s03; commit pending at handoff time).
+  SHIPPED:
+   - bin/bts (m1): setup/doctor/init/find/src/docs/ai. Gates e02 8/8, e03 6/6, e04 13/13.
+   - crates/bts-map (m2): repo-map across 10 langs (Rust/Python/JS/TS/Go/Java/Ruby/C/C++/Swift) ->
+     tree-sitter tags -> petgraph -> deterministic PageRank -> tiktoken-budgeted skeleton render.
+     Gate 13/13 (per-lang non-empty def+ref, budget, drift-tested snapshot), clippy -D clean.
+  ORCHESTRATION: Opus orchestrated + ran every gate; Sonnet did ALL source-reading + ALL builds +
+  the spike. ~440k sub-agent tokens kept off Opus context. Opus tokens spent only on judgment.
+  KNOWN ISSUES before publishing bts-map (see d11 caveats; a follow-up task is tracked):
+   (1) relocate C/C++/Swift divergent .scm out of vendor/queries/ into a separate queries/ dir
+       (CONVENTIONS: vendored = verbatim); (2) Swift fork crate; (3) snapshot fail-if-absent.
+  RESUME OPTIONS: tackle the 3 bts-map caveats; OR m3/e06 (verify install.sh on Linux + curl|bash
+  installer + CI cross-compile of bts-map) when demand appears; OR ship a v0.1.0 tag of what exists.

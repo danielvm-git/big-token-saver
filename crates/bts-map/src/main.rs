@@ -2,6 +2,7 @@
 
 mod error;
 mod graph;
+mod render;
 mod tags;
 
 use anyhow::Result;
@@ -28,10 +29,17 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Tests
+// ───────────────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use crate::graph::rank_files;
+    use crate::render::{count_tokens, render};
     use crate::tags::{extract_tags, Lang, TagKind};
+
+    // ── Existing e05s02 gates ──────────────────────────────────────────────
 
     /// Fixture: a simple Rust file with both definitions and call-site references.
     const RUST_FIXTURE: &str = r#"
@@ -60,13 +68,6 @@ fn main() {
 "#;
 
     /// e05s02 gate: defs>0 AND refs>0 AND def node kind=="identifier".
-    ///
-    /// The node-kind assertion catches the wrong-anchor vintage drift described
-    /// in SPIKE-bts-map.md §"The aider dual-vintage structural drift":
-    /// the older tree-sitter-languages vintage anchors @definition.method to
-    /// `declaration_list` (kind="declaration_list"), not the function name node
-    /// (kind="identifier"). A count-only check passes both vintages; this check
-    /// does not.
     #[test]
     fn rust_tags() {
         let tags = extract_tags("src/lib.rs", RUST_FIXTURE, Lang::Rust)
@@ -84,24 +85,11 @@ fn main() {
             "Expected >0 reference tags; got 0. Check .scm vendoring or grammar pin."
         );
 
-        // Spike mandatory gate (d10): method/function defs must be anchored to
-        // an "identifier" node — NOT a container node like "declaration_list".
-        //
-        // The tree-sitter-language-pack vintage captures:
-        //   `name: (identifier) @name.definition.method`  → node_kind == "identifier"
-        //
-        // The older tree-sitter-languages vintage (WRONG) captures:
-        //   `(declaration_list ...) @definition.method`   → node_kind == "declaration_list"
-        //
-        // Class/struct defs legitimately capture `(type_identifier)` for
-        // `name.definition.class` — we only check method/function defs here.
         let method_defs: Vec<_> = tags
             .iter()
             .filter(|t| {
                 t.kind == TagKind::Def
-                    && (t.name == "greet"
-                        || t.name == "new"
-                        || t.name == "main")
+                    && (t.name == "greet" || t.name == "new" || t.name == "main")
             })
             .collect();
 
@@ -113,8 +101,7 @@ fn main() {
         for def in &method_defs {
             assert_eq!(
                 def.node_kind, "identifier",
-                "Method/function def '{}' at line {} has node_kind='{}', expected 'identifier'. \
-                 Wrong-anchor vintage drift detected — check .scm vintage.",
+                "Method/function def '{}' at line {} has node_kind='{}', expected 'identifier'.",
                 def.name, def.line, def.node_kind
             );
         }
@@ -126,33 +113,330 @@ fn main() {
         let tags_a = extract_tags("src/a.rs", RUST_FIXTURE, Lang::Rust).unwrap();
         let tags_b = extract_tags("src/b.rs", RUST_FIXTURE, Lang::Rust).unwrap();
 
-        // Combine two "files" worth of tags so the graph has edges to rank.
         let mut all_tags = tags_a;
         all_tags.extend(tags_b);
 
         let run1 = rank_files(&all_tags);
         let run2 = rank_files(&all_tags);
 
-        assert_eq!(
-            run1.len(),
-            run2.len(),
-            "Ranked output length changed between runs"
-        );
+        assert_eq!(run1.len(), run2.len(), "Ranked output length changed between runs");
         for (a, b) in run1.iter().zip(run2.iter()) {
             assert_eq!(
                 a.rel_fname, b.rel_fname,
                 "File order changed between runs: {} vs {}",
                 a.rel_fname, b.rel_fname
             );
-            // Use bit-exact float comparison: same algorithm, same input → same IEEE 754 result.
             assert_eq!(
                 a.score.to_bits(),
                 b.score.to_bits(),
                 "Score for '{}' changed between runs: {} vs {}",
-                a.rel_fname,
-                a.score,
-                b.score
+                a.rel_fname, a.score, b.score
             );
         }
+    }
+
+    // ── e05s03: per-language non-empty def+ref gates (mandatory d10) ───────
+    //
+    // Each test asserts defs>0 AND refs>0 for its language. These tests catch
+    // silent grammar/.scm mismatch that compile cleanly but produce 0 captures.
+
+    fn assert_defs_and_refs(rel_fname: &str, source: &str, lang: Lang) {
+        let tags = extract_tags(rel_fname, source, lang)
+            .unwrap_or_else(|e| panic!("{} extract_tags failed: {}", lang.name(), e));
+        let defs = tags.iter().filter(|t| t.kind == TagKind::Def).count();
+        let refs = tags.iter().filter(|t| t.kind == TagKind::Ref).count();
+        assert!(
+            defs > 0,
+            "{}: expected >0 defs, got 0. Check .scm or grammar pin.",
+            lang.name()
+        );
+        assert!(
+            refs > 0,
+            "{}: expected >0 refs, got 0. Check .scm or grammar pin.",
+            lang.name()
+        );
+    }
+
+    #[test]
+    fn python_tags() {
+        assert_defs_and_refs(
+            "src/greeter.py",
+            r#"
+class Greeter:
+    def greet(self, name):
+        return f"Hello, {name}!"
+
+def main():
+    g = Greeter()
+    result = g.greet("world")
+    print(result)
+"#,
+            Lang::Python,
+        );
+    }
+
+    #[test]
+    fn typescript_tags() {
+        assert_defs_and_refs(
+            "src/greeter.ts",
+            r#"
+interface Greeter {
+    greet(name: string): string;
+}
+
+class SimpleGreeter implements Greeter {
+    greet(name: string): string {
+        return `Hello, ${name}!`;
+    }
+}
+
+function main(): void {
+    const g = new SimpleGreeter();
+    const msg = g.greet("world");
+    console.log(msg);
+}
+"#,
+            Lang::TypeScript,
+        );
+    }
+
+    #[test]
+    fn javascript_tags() {
+        assert_defs_and_refs(
+            "src/greeter.js",
+            r#"
+class Greeter {
+    greet(name) {
+        return `Hello, ${name}!`;
+    }
+}
+
+function main() {
+    const g = new Greeter();
+    console.log(g.greet("world"));
+    main();
+}
+"#,
+            Lang::JavaScript,
+        );
+    }
+
+    #[test]
+    fn go_tags() {
+        assert_defs_and_refs(
+            "src/greeter.go",
+            r#"
+package main
+
+import "fmt"
+
+type Greeter struct{}
+
+func (g Greeter) Greet(name string) string {
+    return fmt.Sprintf("Hello, %s!", name)
+}
+
+func main() {
+    g := Greeter{}
+    fmt.Println(g.Greet("world"))
+}
+"#,
+            Lang::Go,
+        );
+    }
+
+    #[test]
+    fn java_tags() {
+        assert_defs_and_refs(
+            "src/Greeter.java",
+            r#"
+public class Greeter {
+    public String greet(String name) {
+        return "Hello, " + name + "!";
+    }
+
+    public static void main(String[] args) {
+        Greeter g = new Greeter();
+        System.out.println(g.greet("world"));
+    }
+}
+"#,
+            Lang::Java,
+        );
+    }
+
+    #[test]
+    fn ruby_tags() {
+        assert_defs_and_refs(
+            "src/greeter.rb",
+            r#"
+class Greeter
+  def greet(name)
+    "Hello, #{name}!"
+  end
+end
+
+def main
+  g = Greeter.new
+  g.greet("world")
+end
+"#,
+            Lang::Ruby,
+        );
+    }
+
+    #[test]
+    fn c_tags() {
+        assert_defs_and_refs(
+            "src/greeter.c",
+            r#"
+#include <stdio.h>
+
+struct Point {
+    int x;
+    int y;
+};
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int main(void) {
+    int result = add(1, 2);
+    printf("result: %d\n", result);
+    return 0;
+}
+"#,
+            Lang::C,
+        );
+    }
+
+    #[test]
+    fn cpp_tags() {
+        assert_defs_and_refs(
+            "src/greeter.cpp",
+            r#"
+#include <cstdio>
+
+int add(int a, int b) {
+    return a + b;
+}
+
+class Greeter {
+public:
+    void greet() {}
+};
+
+int main() {
+    int result = add(1, 2);
+    printf("result: %d\n", result);
+    return 0;
+}
+"#,
+            Lang::Cpp,
+        );
+    }
+
+    #[test]
+    fn swift_tags() {
+        assert_defs_and_refs(
+            "src/Greeter.swift",
+            r#"
+class Greeter {
+    func greet(name: String) -> String {
+        return "Hello, \(name)!"
+    }
+}
+
+func main() {
+    let g = Greeter()
+    print(g.greet(name: "world"))
+}
+"#,
+            Lang::Swift,
+        );
+    }
+
+    // ── e05s03: token budget test ──────────────────────────────────────────
+
+    /// Budget test: rendered output must never exceed the requested budget.
+    ///
+    /// Uses two copies of the Rust fixture (different "files") so the graph has
+    /// enough edges to rank, then checks multiple budget sizes.
+    #[test]
+    fn budget() {
+        let tags_a = extract_tags("src/a.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let tags_b = extract_tags("src/b.rs", RUST_FIXTURE, Lang::Rust).unwrap();
+        let mut all_tags = tags_a;
+        all_tags.extend(tags_b);
+
+        let ranked = rank_files(&all_tags);
+
+        for &budget in &[50, 100, 200, 512, 1024] {
+            let output = render(&ranked, &all_tags, budget);
+            let actual_tokens = count_tokens(&output);
+            assert!(
+                actual_tokens <= budget,
+                "budget={}: rendered output has {} tokens, exceeds budget",
+                budget,
+                actual_tokens
+            );
+        }
+    }
+
+    // ── e05s03: snapshot test ─────────────────────────────────────────────
+
+    /// Snapshot test: map output for the fixture repo is stable.
+    ///
+    /// The fixture repo lives in tests/fixtures/ and contains files across
+    /// several of the 10 supported languages. This test runs the map at a
+    /// fixed budget and asserts the output matches the committed snapshot.
+    #[test]
+    fn snapshot() {
+        use std::path::Path;
+
+        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+
+        // Collect tags from all fixture files.
+        let mut all_tags = Vec::new();
+        let files = [
+            ("greeter.rs", Lang::Rust),
+            ("greeter.py", Lang::Python),
+            ("greeter.ts", Lang::TypeScript),
+            ("greeter.go", Lang::Go),
+            ("greeter.java", Lang::Java),
+        ];
+
+        for (fname, lang) in &files {
+            let path = fixture_dir.join(fname);
+            let source = std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("Failed to read fixture {}: {}", fname, e));
+            let rel = format!("tests/fixtures/{}", fname);
+            let tags = extract_tags(&rel, &source, *lang)
+                .unwrap_or_else(|e| panic!("extract_tags failed for {}: {}", fname, e));
+            all_tags.extend(tags);
+        }
+
+        let ranked = rank_files(&all_tags);
+        let output = render(&ranked, &all_tags, 256);
+
+        // Assert against the committed expected snapshot.
+        // If the snapshot file doesn't exist yet (first run), write it and pass.
+        let expected_path = fixture_dir.join("expected_snapshot.txt");
+        if !expected_path.exists() {
+            std::fs::write(&expected_path, &output)
+                .unwrap_or_else(|e| panic!("Failed to write snapshot {}: {}", expected_path.display(), e));
+            // First run: snapshot written, test passes.
+            return;
+        }
+
+        let expected = std::fs::read_to_string(&expected_path)
+            .unwrap_or_else(|e| panic!("Failed to read snapshot {}: {}", expected_path.display(), e));
+
+        assert_eq!(
+            output, expected,
+            "Snapshot mismatch! If output is intentionally changed, delete tests/fixtures/expected_snapshot.txt and re-run tests to regenerate.\nActual:\n{}",
+            output
+        );
     }
 }

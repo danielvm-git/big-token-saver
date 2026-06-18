@@ -15,9 +15,9 @@ epics:
   e04:                       # verbs — DONE (find/src/docs/ai; docs = context7 MCP launcher per d08)
     status: done
     stories: { e04s01: done, e04s02: done }
-  e05:                       # bts map (Rust) — tracer bullet (s01+s02) DONE; s03 scale-up pending
-    status: in_progress
-    stories: { e05s01: done, e05s02: done, e05s03: pending }
+  e05:                       # bts map (Rust) — DONE: 10 langs + tiktoken budget + renderer + snapshot (13/13)
+    status: done
+    stories: { e05s01: done, e05s02: done, e05s03: done }
   e06:
     status: pending
     stories: { e06s01: pending, e06s02: pending }
@@ -27,9 +27,9 @@ epics:
 
 summary:
   total_stories: 15
-  done: 11
-  pending: 3
+  done: 12
+  pending: 2
   backlog: 1
 
-# m1 done. e05 tracer bullet (s01+s02) done — whole path proven for Rust.
-next: e05s03    # SCALE-UP: >=10 langs (vendor both .scm dirs) + tiktoken budget + TreeContext renderer + snapshot
+# m0+m1+m2 COMPLETE. bts map ships 10 langs + budget + snapshot. Only m3 (e06 share, e07 backlog) remains — demand-driven.
+next: e06s01    # m3: cross-platform verify + published curl|bash installer (demand-driven — pull only if used)
