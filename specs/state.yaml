@@ -92,7 +92,7 @@ artifacts:
 epic_cycle:
   epic: e06
   story: e06s03
-  step: 4
+  step: 5
   story_bcps: 3
 
 metrics:
@@ -106,12 +106,11 @@ handoff: |
   - m3 (e06): release CI builds bts-map for 3 platforms (macOS ARM/Intel, Linux),
     semantic-release attaches binaries to GitHub Release, curl|bash one-liner
     documented, CI install-check job ready for Linux verification.
-  STEP 4 (develop-tdd) COMPLETE. 4/4 tasks implemented:
-    1. package.json + .npmignore
-    2. CI release.yml npm publish job
-    3. bin/bts bundled binary lookup (_bts_platform_suffix)
-    4. Smoke test: tarball unpack + bts map verified
-    Tests: 16/16 passed. Shellcheck: clean. Next: verify-work (step 5).
+  STEP 5 (verify-work) COMPLETE. All gates green:
+    - build: PASS  - clippy: PASS  - shellcheck: PASS  - shfmt: PASS
+    - tests: 16/16 PASS  - UAT: 4/4 tasks verified
+    Evidence: specs/verifications/e06s03-verify.yaml
+    Next: audit-code (step 6).
   SHIPPED:
    - v0.2.0 GitHub Release with 3 binary tarballs:
      bts-map-darwin-arm64.tar.gz  (396 KB)
