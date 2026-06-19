@@ -6,6 +6,19 @@ bugs:
     scope: specs
     summary: "Missing type: and context: metadata in e07 spec YAMLs"
     file: specs/bugs/BUG-20260618-spec-metadata.md
+  - bug_id: BUG-20260618T020500
+    date: 2026-06-18
+    severity: medium
+    priority: p2
+    scope: bts-map
+    summary: "bts map returns 'no source files' when run with default '.' path — root excluded by hidden-dir heuristic"
+    file: specs/bugs/BUG-20260618T020500-map-dot-root.md
+    status: fixed
+    risk_level: medium
+    approach: "Add entry.depth() > 0 guard to is_excluded() starts_with('.') check"
+    hardening: "3 new integration tests: walk-from-dot, hidden-root, hidden-children-excluded"
+    commit_message: "fix(bts-map): don't exclude walk root when path is '.'"
+    files_changed: ["crates/bts-map/src/main.rs"]
   - bug_id: BUG-20260618T044939
     date: 2026-06-18
     severity: low
