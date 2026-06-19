@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danielvm-git/big-token-saver"
+    "url": "git+https://github.com/danielvm-git/big-token-saver.git"
   },
   "bin": {
     "bts": "bin/bts"
