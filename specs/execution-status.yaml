@@ -26,7 +26,7 @@ epics:
       swift_fork: done       # Tracked with deny.toml + SWIFT-FORK-TRACKING comments (blocked on ts 0.25)
   e06:
     status: ready
-    stories: { e06s01: done, e06s02: done, e06s03: pending }
+    stories: { e06s01: done, e06s02: done, e06s03: done }
   e07:
     status: done
     stories: { e07s01: done }
@@ -39,13 +39,13 @@ epics:
 
 summary:
   total_stories: 16
-  done: 15
-  pending: 1
+  done: 16
+  pending: 0
   backlog: 0
 
-# v0.2.1 — e07 shipped 2026-06-18. e06s03 (npm) pending.
+# v0.3.0 — e06 COMPLETE (npm distribution shipped).
 # Features:
 #   1. Shared .bts.toml profiles: bts config [show|get|set|init]
 #   2. bts compress: shells sqz with opinionated defaults
 #   3. bts map regret learning: feedback-driven PageRank adjustment
-next: build-epic_step1_survey
+next: survey-context
