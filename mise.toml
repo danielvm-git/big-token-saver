@@ -7,7 +7,7 @@
 [tools]
 # ── shell power-tools (mise registry → aqua/ubi prebuilt binaries) ──
 ripgrep = "latest"
-fd      = "latest"
+"github:sharkdp/fd" = "10.3.0"   # aqua backend lacks darwin/amd64; upstream dropped Intel Mac binaries in v10.4.0
 bat     = "latest"
 eza     = "latest"
 fzf     = "latest"
@@ -42,7 +42,7 @@ BTS_MODEL = "claude-opus-4-8"
 [tasks.doctor]
 description = "Verify the whole toolchain is present"
 run = '''
-for b in rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz; do
+for b in rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz bts; do
   command -v "$b" >/dev/null && echo "ok       $b" || echo "MISSING  $b"
 done
 '''
@@ -132,6 +132,46 @@ if grep -q 'invariant: manifest must be non-empty' install.sh; then
   PASS=$((PASS + 1))
 else
   echo "FAIL     install.sh missing empty-config guard"
+  FAIL=$((FAIL + 1))
+fi
+# verify fd uses an explicit backend (not bare name -> aqua, which lacks darwin/amd64)
+if grep -qE '^"?github:sharkdp/fd"?\s*=' mise.toml; then
+  echo "ok       mise.toml fd uses github backend (not bare aqua)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     mise.toml fd missing explicit github backend"
+  FAIL=$((FAIL + 1))
+fi
+# verify fd is pinned to a version (not "latest" which lacks Intel Mac binaries)
+if grep -qE '^"?github:sharkdp/fd"?\s*=\s*"10\.3\.0"' mise.toml; then
+  echo "ok       mise.toml fd pinned to 10.3.0 (last Intel Mac release)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     mise.toml fd not pinned to 10.3.0"
+  FAIL=$((FAIL + 1))
+fi
+# verify install.sh installs bts itself to ~/.local/bin
+if grep -q 'local/bin/bts' install.sh && grep -q 'chmod.*BTS_BIN' install.sh; then
+  echo "ok       install.sh installs bts to ~/.local/bin"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing bts self-install step"
+  FAIL=$((FAIL + 1))
+fi
+# verify install.sh has pipe-mode fetch for bts
+if grep -q 'REPO_RAW/bin/bts' install.sh; then
+  echo "ok       install.sh has bts pipe-mode fetch fallback"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing bts pipe-mode fetch"
+  FAIL=$((FAIL + 1))
+fi
+# verify bts is in doctor check list
+if grep -q 'rg fd bat.*bts' mise.toml; then
+  echo "ok       doctor check includes bts"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     doctor check missing bts"
   FAIL=$((FAIL + 1))
 fi
 

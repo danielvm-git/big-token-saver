@@ -1,4 +1,30 @@
 bugs:
+  - bug_id: BUG-20260622T200000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: installer
+    summary: "install.sh does not install bts itself — user has all tools but no bts command"
+    file: specs/bugs/BUG-20260622T200000-install-bts.md
+    status: fixed
+    risk_level: low
+    approach: "Add step 5 to install.sh: copy bin/bts to ~/.local/bin/ with pipe-mode fetch fallback. Add bts to doctor check list."
+    hardening: "3 structural assertions: bts install step, pipe-mode fallback, doctor includes bts"
+    commit_message: "feat(installer): install bts itself to ~/.local/bin during install.sh"
+    files_changed: ["install.sh", "mise.toml", "specs/bugs/BUG-20260622T200000-install-bts.md", "specs/bugs/registry.yaml"]
+  - bug_id: BUG-20260622T193000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: toolchain
+    summary: "fd install fails on Intel Mac (darwin/amd64) — aqua backend unsupported; upstream sharkdp/fd dropped Intel Mac binaries in v10.4.0"
+    file: specs/bugs/BUG-20260622T193000-fd-intel-mac.md
+    status: fixed
+    risk_level: low
+    approach: "Pin fd to github:sharkdp/fd@10.3.0 — last release with x86_64-apple-darwin binaries. Bare fd=latest resolved to aqua backend which rejects darwin/amd64."
+    hardening: "2 structural assertions in mise run test: fd uses explicit github backend + pinned to 10.3.0"
+    commit_message: "fix(toolchain): pin fd to github:sharkdp/fd@10.3.0 for Intel Mac support"
+    files_changed: ["mise.toml", "specs/bugs/BUG-20260622T193000-fd-intel-mac.md", "specs/bugs/registry.yaml"]
   - bug_id: BUG-20260618
     date: 2026-06-18
     severity: low
