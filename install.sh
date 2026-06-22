@@ -36,7 +36,13 @@ if [ -f "$GLOBAL" ]; then
 fi
 cp "$MISE_TOML" "$GLOBAL"
 
-# 3. install everything, then report
+# 3. invariant: manifest must be non-empty (guards against fetch failures and pipe-mode path bugs)
+if [ ! -s "$GLOBAL" ]; then
+	echo "❌ ERROR: failed to install mise.toml — global config is empty or missing" >&2
+	exit 1
+fi
+
+# 4. install everything, then report
 echo "→ installing toolchain (this fetches from npm / pipx / GitHub releases)…"
 mise install
 echo

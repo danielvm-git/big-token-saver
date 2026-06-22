@@ -113,6 +113,28 @@ assert_eq "bts --version exits 0" "0" "$exit_code"
 echo "--- bts-map Rust crate ---"
 cargo test --quiet 2>&1 | tail -5
 
+echo "--- install.sh ---"
+# verify install.sh is shellcheck-clean
+if command -v shellcheck >/dev/null 2>&1; then
+  shellcheck install.sh && echo "ok       install.sh shellcheck" || { echo "FAIL     install.sh shellcheck"; FAIL=$((FAIL + 1)); }
+fi
+# verify install.sh has pipe-mode fallback (fetches mise.toml from repo)
+if grep -q 'REPO_RAW' install.sh && grep -q 'mise doctor' install.sh; then
+  echo "ok       install.sh has pipe-mode fetch + mise doctor"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing pipe-mode fetch or mise doctor"
+  FAIL=$((FAIL + 1))
+fi
+# verify install.sh has invariant assertion (guard against empty config)
+if grep -q 'invariant: manifest must be non-empty' install.sh; then
+  echo "ok       install.sh has empty-config guard"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing empty-config guard"
+  FAIL=$((FAIL + 1))
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

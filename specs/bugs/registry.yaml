@@ -42,5 +42,6 @@ bugs:
     status: fixed
     risk_level: low
     approach: "Fetch mise.toml from repo when not co-located (pipe mode); use mise doctor instead of mise run doctor"
-    hardening: "Manual verification: pipe-mode simulation + local mode + shellcheck"
-    files_changed: ["install.sh"]
+    hardening: "Invariant assertion that GLOBAL config is non-empty after copy; structural tests in mise run test (shellcheck + pipe-mode grep + guard grep)"
+    commit_message: "fix(installer): fetch mise.toml from repo in pipe mode, use mise doctor"
+    files_changed: ["install.sh", "mise.toml"]
