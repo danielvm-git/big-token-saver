@@ -9,7 +9,8 @@
     ["@semantic-release/github", {
       "assets": [
         {"path": "release-assets/bts-map-*.tar.gz", "label": "bts-map binary ({filename})"}
-      ]
+      ],
+      "successComment": false
     }]
   ]
 }
