@@ -86,6 +86,13 @@ jobs:
           find artifacts -name "*.tar.gz" -exec cp {} release-assets/ \;
           ls -lh release-assets/
 
+      - name: Capture pre-release tag
+        id: pre-tag
+        run: |
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "pre-release tag: ${TAG}"
+
       - name: Semantic Release
         run: npx semantic-release
         env:
@@ -109,16 +116,22 @@ jobs:
 
       - name: Publish to npm
         run: |
-          # Read the release tag that semantic-release just created.
-          # If no tag exists (no conventional commits triggering a release),
-          # skip npm publish — there's nothing new to ship.
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          if [ -z "${LATEST_TAG}" ]; then
-            echo "No release tag found — skipping npm publish (no release triggered)"
+          # Guard 1: NPM_TOKEN must be configured.
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "NPM_TOKEN not configured — skipping npm publish"
             exit 0
           fi
-          VERSION="${LATEST_TAG#v}"
-          echo "→ Publishing npm package version ${VERSION} (from tag ${LATEST_TAG})"
+
+          # Guard 2: only publish if semantic-release just created a new tag.
+          PRE_TAG="${{ steps.pre-tag.outputs.tag }}"
+          POST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          if [ "${PRE_TAG}" = "${POST_TAG}" ]; then
+            echo "No new release (tag unchanged: ${PRE_TAG}) — skipping npm publish"
+            exit 0
+          fi
+
+          VERSION="${POST_TAG#v}"
+          echo "→ Publishing npm package version ${VERSION} (from tag ${POST_TAG})"
           npm version "${VERSION}" --no-git-tag-version --allow-same-version
           npm publish --access public
         env:

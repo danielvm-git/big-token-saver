@@ -32,6 +32,13 @@ bugs:
     hardening: "mise run test task with 8 smoke tests (3 positive permutations, 2 negative edge cases, 3 baseline)"
     commit_message: "fix(bts): implement --stdin flag in compress verb (4 commits)"
     files_changed: ["bin/bts", "mise.toml"]
+  - bug_id: BUG-20260622T180000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: ci
+    summary: "Release workflow always red — npm publish runs unconditionally on every push without auth guard"
+    file: specs/bugs/BUG-20260622T180000-release-red.md
   - bug_id: BUG-20260622T170000
     date: 2026-06-22
     severity: medium
