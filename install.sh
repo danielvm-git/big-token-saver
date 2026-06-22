@@ -47,5 +47,18 @@ echo "→ installing toolchain (this fetches from npm / pipx / GitHub releases)�
 mise install
 echo
 mise doctor || true
+
+# 5. install bts itself to ~/.local/bin (co-located or pipe-mode fetch)
+BTS_BIN="$HOME/.local/bin/bts"
+mkdir -p "$(dirname "$BTS_BIN")"
+if [ -f "$HERE/bin/bts" ]; then
+	cp "$HERE/bin/bts" "$BTS_BIN"
+else
+	echo "→ fetching bts from repository…"
+	curl -fsSL "$REPO_RAW/bin/bts" -o "$BTS_BIN"
+fi
+chmod +x "$BTS_BIN"
+echo "→ installed bts to $BTS_BIN"
+
 echo
 echo "✓ done. Per-project wiring (hooks, .bts.toml, conventions) comes from:  bts init"
