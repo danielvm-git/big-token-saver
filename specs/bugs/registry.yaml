@@ -32,3 +32,15 @@ bugs:
     hardening: "mise run test task with 8 smoke tests (3 positive permutations, 2 negative edge cases, 3 baseline)"
     commit_message: "fix(bts): implement --stdin flag in compress verb (4 commits)"
     files_changed: ["bin/bts", "mise.toml"]
+  - bug_id: BUG-20260622T170000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: installer
+    summary: "install.sh fails in curl-pipe mode: cp can't find mise.toml + wrong mise doctor command"
+    file: specs/bugs/BUG-20260622T170000-install-pipe.md
+    status: fixed
+    risk_level: low
+    approach: "Fetch mise.toml from repo when not co-located (pipe mode); use mise doctor instead of mise run doctor"
+    hardening: "Manual verification: pipe-mode simulation + local mode + shellcheck"
+    files_changed: ["install.sh"]

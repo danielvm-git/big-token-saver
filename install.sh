@@ -18,19 +18,28 @@ if ! command -v mise >/dev/null 2>&1; then
 fi
 eval "$(mise activate bash)" 2>/dev/null || true
 
-# 2. apply the manifest globally (back up any existing global config first)
+# 2. locate manifest (co-located in local mode; fetch from repo in pipe mode)
+REPO_RAW="https://raw.githubusercontent.com/danielvm-git/big-token-saver/main"
+MISE_TOML="$HERE/mise.toml"
+if [ ! -f "$MISE_TOML" ]; then
+	echo "→ fetching mise.toml from repository…"
+	MISE_TOML="$(mktemp)"
+	curl -fsSL "$REPO_RAW/mise.toml" -o "$MISE_TOML"
+fi
+
+# 3. apply the manifest globally (back up any existing global config first)
 GLOBAL="$HOME/.config/mise/config.toml"
 mkdir -p "$(dirname "$GLOBAL")"
 if [ -f "$GLOBAL" ]; then
 	cp "$GLOBAL" "$GLOBAL.bak.$(date +%s)"
 	echo "→ backed up existing global mise config"
 fi
-cp "$HERE/mise.toml" "$GLOBAL"
+cp "$MISE_TOML" "$GLOBAL"
 
 # 3. install everything, then report
 echo "→ installing toolchain (this fetches from npm / pipx / GitHub releases)…"
 mise install
 echo
-mise run doctor || true
+mise doctor || true
 echo
 echo "✓ done. Per-project wiring (hooks, .bts.toml, conventions) comes from:  bts init"
