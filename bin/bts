@@ -29,6 +29,7 @@ Verbs:
   doctor   Verify every tool is present (runs mise run doctor)
   init     Per-project wiring: .bts.toml + .envrc + agent hooks
   config   Show or manage merged global + project configuration
+  wire     Patch existing agent instruction files with bts usage rules
   find     Search code: rg → fzf picker (--print for non-interactive)
   src      Print/fetch source for a package via opensrc
   docs     Show/launch the context7 MCP server config for the active agent
@@ -614,6 +615,92 @@ _record_feedback() {
     fi
 }
 
+# bts wire — patch existing agent instruction files with bts toolchain rules.
+# Detects CLAUDE.md, GEMINI.md, AGENTS.md, .gemini/GEMINI.md, OPENCODE.md and
+# appends a compact bts usage section to each one found.
+# Idempotent: skips any file that already contains the sentinel heading.
+# Usage: bts wire [--dry-run]
+bts_wire() {
+    local dry_run=0
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --dry-run)
+            dry_run=1
+            shift
+            ;;
+        *)
+            echo "Unknown flag: $1" >&2
+            echo "Usage: bts wire [--dry-run]" >&2
+            exit 1
+            ;;
+        esac
+    done
+
+    # Canonical agent instruction files (checked in discovery order).
+    local -a candidates=(
+        "CLAUDE.md"
+        "GEMINI.md"
+        "AGENTS.md"
+        ".gemini/GEMINI.md"
+        "OPENCODE.md"
+    )
+
+    local sentinel="## bts toolchain"
+    local patched=0
+    local skipped=0
+    local missing=0
+
+    for f in "${candidates[@]}"; do
+        if [ ! -f "${f}" ]; then
+            echo "skip     ${f} (not found)"
+            missing=$((missing + 1))
+            continue
+        fi
+        if grep -qF "${sentinel}" "${f}" 2>/dev/null; then
+            echo "skip     ${f} (already wired)"
+            skipped=$((skipped + 1))
+            continue
+        fi
+        if [ "${dry_run}" -eq 1 ]; then
+            echo "would patch  ${f}"
+            patched=$((patched + 1))
+            continue
+        fi
+        # Append section with a blank line separator.
+        cat >>"${f}" <<'BTSSECTION'
+
+## bts toolchain
+
+`bts` is installed. Prefer its verbs over ad-hoc shell commands.
+
+| Task | Command | Avoid |
+|------|---------|-------|
+| Search code | `bts find --print <pattern>` | grep / find / cat |
+| Interactive search | `bts find <pattern>` | manual grep pipes |
+| Compress for context | `bts compress <file>` or `cmd \| bts compress` | summarising by hand |
+| Repo map | `bts map` | listing files by hand |
+| Library docs | `bts docs <lib>` | guessing from training data |
+| Package source | `bts src <pkg>` | git clone |
+| Toolchain health | `bts doctor` | which / command -v |
+
+**Rules**
+- Search with `bts find` before opening files to locate a symbol or pattern.
+- Pipe anything > 200 lines through `bts compress` before adding to context.
+- Run `bts map` when asked for a repo overview.
+- Use `bts docs <lib>` before answering questions about library APIs.
+- If a tool is missing, say so and run `bts doctor` — do not silently substitute.
+BTSSECTION
+        echo "✓ patched  ${f}"
+        patched=$((patched + 1))
+    done
+
+    echo ""
+    echo "wire: ${patched} patched, ${skipped} already wired, ${missing} not found"
+    if [ "${patched}" -eq 0 ] && [ "${skipped}" -eq 0 ]; then
+        echo "hint: create one of ${candidates[*]} and re-run bts wire"
+    fi
+}
+
 # bts find — search code with rg; pipe into fzf+bat when interactive.
 bts_find() {
     local print_mode=0
@@ -727,6 +814,10 @@ main() {
     config)
         shift
         bts_config "$@"
+        ;;
+    wire)
+        shift
+        bts_wire "$@"
         ;;
     find)
         shift
