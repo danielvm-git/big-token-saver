@@ -1,14 +1,22 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-18 (v0.2.1 — e07 COMPLETE)
+# Last updated: 2026-06-28 (e08 REGISTERED — agent-wiring epic)
 type: feat
 context: infra
 
 session:
-  phase: COMPLETE           # ALL EPICS DONE — v0.3.0
+  phase: COMPLETE
   active_epic: null
   active_story: null
-  last_skill: release-branch  # e06s03 landed on main
+  last_skill: build-epic
   active_flow: null
+
+epic_cycle:
+  epic: e08
+  story: e08s05
+  step: 8
+  story_order: [e08s01, e08s02, e08s04, e08s03, e08s05]
+  fast_mode: false
+  audit_result: pass
 
 pivot:
   date: 2026-06-15
@@ -87,7 +95,8 @@ artifacts:
     - "crates/bts-map/ (e05 COMPLETE)"       # DONE 2026-06-17: 10 langs + tiktoken budget + skeleton renderer + drift-tested snapshot; gate 13/13
     - "e06 share (cross-platform + published installer)"  # m3 — DONE; v0.2.0 shipped
     - "e07 backlog (COMPLETE 2026-06-18)"             # shared profiles + compress + regret learning
-  pending: []
+  pending:
+    - "specs/epics/e08-agent-wiring.yaml"  # agent behavioral integration — rtk wrappers + wire overhaul + bts grep
 
 epic_cycle:
   epic: e06

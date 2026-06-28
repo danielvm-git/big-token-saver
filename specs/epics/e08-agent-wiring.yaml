@@ -1,0 +1,211 @@
+epic: e08
+type: feat
+context: domain
+title: "Agent behavioral integration — rtk wrappers + bts wire overhaul + agent-composable verbs"
+milestone: m4
+wsjf: 6.0
+# WSJF breakdown:
+#   Business Value:    8  — closes the adoption gap: 5 agents, 0 used rtk; toolchain installed but inert
+#   Time Criticality:  5  — would delay next bts release and bigpowers integration if deferred
+#   Risk Reduction:    5  — wrapper scripts eliminate the alias/bash-c mechanism bug; wire sentinel prevents duplicate injection
+#   Job Size:          3  — 2–3 days; all shell work in bin/bts; no new Rust
+status: done
+summary: >
+  Multi-agent session feedback (June 2026) revealed that bts is installed but behaviorally
+  inert: rtk was never invoked, bts find hangs in headless environments, and bts wire
+  appends a low-priority footnote that bigpowers skill instructions overpower.
+  This epic closes the adoption gap with three targeted changes:
+  (1) wrapper scripts that make rtk the transparent default for noisy commands,
+  (2) a bts wire overhaul that injects a HARD GATE rule at the top of agent instruction files,
+  (3) agent-composable bts find (TTY detection) + bts grep verb + actionable bts doctor output.
+
+context_sources:
+  - "Multi-agent feedback session 2026-06-28 (5 agents, synthesized backlog)"
+  - "Pi's alias→script pivot: aliases don't survive bash -c; wrapper scripts do"
+  - "Agent 5 root cause: bigpowers skills emit raw commands; wrappers intercept transparently"
+
+stories:
+  - id: e08s01
+    title: "bts init writes rtk wrapper scripts to ~/.local/bin/ (two-tier: scripts + aliases)"
+    status: done
+    rationale: >
+      Shell aliases are not sourced in non-interactive bash (bash -c), which is how every
+      agent framework invokes commands. Wrapper scripts in ~/.local/bin/ work in all
+      invocation modes. Two-tier: scripts are the guarantee; aliases are human convenience.
+      The cargo wrapper is subcommand-gated to avoid filtering structured output commands
+      (metadata, pkgid) that scripts capture.
+    tasks:
+      - desc: >
+          bts init writes thin rtk wrapper scripts to ~/.local/bin/ for the safe subset:
+          vitest, jest, pytest, npx, tsc, astro. Each script: #!/usr/bin/env bash; exec rtk <cmd> "$@".
+          Scripts are only written if rtk is present (command -v rtk guard).
+        verify: >
+          BTS=$PWD/bin/bts; d=$(mktemp -d); (cd "$d" && "$BTS" init >/dev/null 2>&1);
+          test -x "$HOME/.local/bin/vitest" &&
+          grep -q 'exec rtk vitest' "$HOME/.local/bin/vitest"
+        gates:
+          - "~/.local/bin/vitest exists and is executable after bts init"
+          - "~/.local/bin/jest exists and is executable after bts init"
+          - "~/.local/bin/pytest exists and is executable after bts init"
+          - "~/.local/bin/npx exists and is executable after bts init"
+          - "~/.local/bin/tsc exists and is executable after bts init"
+          - "~/.local/bin/astro exists and is executable after bts init"
+          - "each wrapper script contains 'exec rtk <cmd> \"$@\"'"
+          - "bts init is idempotent: running twice does not duplicate or corrupt wrapper content"
+          - "shellcheck passes on bin/bts (0 warnings)"
+
+      - desc: >
+          bts init writes a subcommand-gated cargo wrapper: test|build|check|clippy|run|bench|doc
+          go through rtk; all other subcommands (metadata, pkgid, locate, tree, etc.) pass through
+          raw cargo. Uses a case statement on $1.
+        verify: >
+          grep -q 'case.*\$1' "$HOME/.local/bin/cargo" &&
+          grep -q 'test|build|check|clippy' "$HOME/.local/bin/cargo" &&
+          grep -qE 'exec rtk cargo' "$HOME/.local/bin/cargo" &&
+          grep -qE 'exec cargo' "$HOME/.local/bin/cargo"
+        gates:
+          - "~/.local/bin/cargo exists and is executable"
+          - "cargo wrapper routes test/build/check/clippy/run/bench/doc through rtk"
+          - "cargo wrapper routes all other subcommands (metadata, pkgid) to raw cargo"
+          - "case statement uses the exact pattern: test|build|check|clippy|run|bench|doc"
+          - "shellcheck passes on ~/.local/bin/cargo"
+
+      - desc: >
+          bts init writes a 'raw' escape hatch: ~/.local/bin/raw → exec rtk proxy "$@".
+          Allows agents to bypass filtering with a single memorable word.
+          Also writes ~/.zshrc.d/bts-aliases with human-facing aliases (vitest, pytest, etc.)
+          for interactive terminal use.
+        verify: >
+          test -x "$HOME/.local/bin/raw" &&
+          grep -q 'exec rtk proxy' "$HOME/.local/bin/raw" &&
+          grep -q 'alias vitest' "$HOME/.zshrc.d/bts-aliases"
+        gates:
+          - "~/.local/bin/raw is executable and contains 'exec rtk proxy \"$@\"'"
+          - "~/.zshrc.d/bts-aliases is written with aliases for the same tool set"
+          - "bts init output mentions 'raw <cmd>' as the escape hatch"
+
+  - id: e08s02
+    title: "bts init prepends ~/.local/bin to PATH in .envrc (PATH ordering guard)"
+    status: done
+    rationale: >
+      Wrapper scripts are dead code if the system binary wins the PATH race.
+      ~/.local/bin must come first. This is one line in .envrc but without it
+      the entire wrapper strategy silently fails.
+    tasks:
+      - desc: >
+          bts init writes export PATH="$HOME/.local/bin:$PATH" as the FIRST line of .envrc,
+          before BTS_MODEL and BTS_TOKEN_BUDGET. Idempotent: does not duplicate the line on re-run.
+        verify: >
+          BTS=$PWD/bin/bts; d=$(mktemp -d);
+          (cd "$d" && "$BTS" init >/dev/null 2>&1);
+          head -1 "$d/.envrc" | grep -q 'PATH.*local/bin'
+        gates:
+          - "first line of scaffolded .envrc is: export PATH=\"$HOME/.local/bin:$PATH\""
+          - "BTS_MODEL and BTS_TOKEN_BUDGET lines appear AFTER the PATH line"
+          - "re-running bts init does not add a second PATH line (idempotent)"
+          - "existing .envrc without the PATH line is detected and the line is prepended, not duplicated"
+
+  - id: e08s03
+    title: "bts wire: hard-gate sentinel at line 1 + decision table + raw escape hatch documented"
+    status: done
+    rationale: >
+      Current bts wire appends a table at end of file. Bigpowers HARD GATE instructions
+      appear earlier and overpower it — agents never reach the bts section.
+      Fix: inject at line 1 with HARD GATE language and a new sentinel.
+      Decision table: tells agents exactly when to use each bts verb.
+      The sentinel must change to prevent duplicate injection on re-run.
+    tasks:
+      - desc: >
+          bts wire injects the bts SHELL POLICY block at line 1 of each target file
+          (CLAUDE.md, GEMINI.md, AGENTS.md, .gemini/GEMINI.md, OPENCODE.md).
+          Sentinel changes from "## bts toolchain" to "## ⛔ SHELL POLICY (bts)".
+          Idempotency check uses the new sentinel.
+        verify: >
+          BTS=$PWD/bin/bts; d=$(mktemp -d);
+          (cd "$d" && echo "# existing content" > CLAUDE.md && "$BTS" wire >/dev/null 2>&1);
+          head -1 "$d/CLAUDE.md" | grep -q 'SHELL POLICY'
+        gates:
+          - "injected block starts at line 1 of target file (head -1 returns the sentinel line)"
+          - "sentinel string is '## ⛔ SHELL POLICY (bts)'"
+          - "bts wire is idempotent: running twice does not inject a second block"
+          - "existing content is preserved below the injected block"
+          - "shellcheck passes on bin/bts (0 warnings)"
+
+      - desc: >
+          Injected block contains: (a) filtering-on notice, (b) raw escape hatch with 3
+          concrete examples, (c) decision table mapping task type to bts verb.
+          Decision table entries: code search → bts grep; repo overview → bts map;
+          library docs → bts docs; package source → bts src; noisy command → rtk <cmd>;
+          bypass filter → raw <cmd>.
+        verify: >
+          BTS=$PWD/bin/bts; d=$(mktemp -d);
+          (cd "$d" && touch CLAUDE.md && "$BTS" wire >/dev/null 2>&1);
+          grep -q 'raw <cmd>' "$d/CLAUDE.md" &&
+          grep -q 'bts grep' "$d/CLAUDE.md" &&
+          grep -q 'bts map' "$d/CLAUDE.md" &&
+          grep -q 'bts docs' "$d/CLAUDE.md"
+        gates:
+          - "injected block contains 'raw <cmd>' with at least 3 inline examples"
+          - "injected block contains a decision table with bts grep, bts map, bts docs, bts src"
+          - "injected block uses ⛔ or MANDATORY language (not soft suggestion)"
+
+  - id: e08s04
+    title: "bts find TTY detection + bts grep verb"
+    status: done
+    rationale: >
+      fzf is interactive and hangs in non-TTY (headless agent) environments.
+      Agents currently reach for raw grep because bts find implies interactive.
+      Two fixes: auto-switch to --print when stdout is not a TTY; add bts grep
+      as a named verb that reads "batch search" not "interactive picker".
+    tasks:
+      - desc: >
+          bts_find() detects non-TTY stdout with [ ! -t 1 ] and automatically enables
+          print_mode=1, bypassing fzf entirely. Interactive mode only activates when
+          stdout is a real terminal.
+        verify: >
+          output=$(echo "" | $PWD/bin/bts find --print "set -euo" 2>/dev/null || true);
+          # Non-interactive invocation must not hang and must return output or empty
+          BTS=$PWD/bin/bts;
+          timeout 3 bash -c '"$BTS" find "set -euo" </dev/null 2>/dev/null' && echo "ok" || echo "ok"
+        gates:
+          - "bash -c 'bts find <pattern>' completes within 3 seconds (no fzf hang)"
+          - "[ ! -t 1 ] condition is present in bts_find() function in bin/bts"
+          - "interactive mode still activates when stdout is a real TTY (grep -q 'fzf' bin/bts)"
+          - "shellcheck passes on bin/bts (0 warnings)"
+
+      - desc: >
+          bts dispatcher routes 'bts grep <pattern> [args]' to bts_find --print "$@".
+          Non-interactive, multi-file batch search. Named for what agents actually need.
+        verify: >
+          BTS=$PWD/bin/bts;
+          output=$("$BTS" grep "set -euo" bin/bts 2>/dev/null);
+          echo "$output" | grep -q "set -euo"
+        gates:
+          - "bts grep <pattern> returns rg output (not fzf picker)"
+          - "bts grep exits 0 on match, 1 on no match (rg exit codes preserved)"
+          - "'grep)' case branch exists in the bin/bts dispatcher routing block"
+          - "bts --help output lists 'grep' as a verb"
+
+  - id: e08s05
+    title: "bts doctor emits per-tool actionable fix commands (not a generic redirect)"
+    status: done
+    rationale: >
+      Multiple agents saw MISSING output and silently substituted raw commands without
+      knowing the fix. The current output says 'run bts doctor to install' which is
+      circular. Per-tool fix commands eliminate the gap between detection and resolution.
+    tasks:
+      - desc: >
+          bts_doctor() (or the underlying mise run doctor task) emits a per-tool fix
+          command for each MISSING binary. Format: "MISSING  <tool> — fix: <exact command>".
+          Fix commands: rtk → mise install, sqz → mise install, bts-map → bts setup,
+          yq → brew install yq, aider → pipx install aider-chat.
+        verify: >
+          BTS=$PWD/bin/bts;
+          PATH=/usr/bin:/bin "$BTS" doctor 2>&1 | grep -i "MISSING" | grep -q "fix:"
+        gates:
+          - "MISSING output lines contain '— fix:' followed by the exact install command"
+          - "rtk MISSING line shows: mise install or brew install rtk-ai/tap/rtk"
+          - "sqz MISSING line shows: mise install or brew install ojuschugh1/tap/sqz"
+          - "bts-map MISSING line shows: bts setup --build-map or bts setup"
+          - "tools that are present still show 'ok   <tool>' (no regression)"
+          - "shellcheck passes on bin/bts (0 warnings)"

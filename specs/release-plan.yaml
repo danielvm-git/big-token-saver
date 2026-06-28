@@ -39,6 +39,12 @@ milestones:
     name: "Share"
     goal: "Cross-platform + published installer (demand-driven)"
     epics: [e06, e07]
+  - id: m4
+    name: "Agent behavioral integration"
+    goal: "rtk is actually invoked, bts verbs work headless, wire is a hard gate"
+    epics: [e08]
+    version: "0.4.0"
+    bump_hint: minor    # new bts grep verb = minor; all other changes are behavioral fixes
 
 epics:
   - id: e01
@@ -131,10 +137,43 @@ epics:
     title: "More ideas-on-top (demand-driven backlog)"
     milestone: m3
     size: S
-    status: backlog
+    status: done
     description: >
-      Park future unifier ideas here; pull them only when real use creates the pull —
-      e.g. shared `.bts.toml` profiles, a `bts compress` verb shelling the installed sqz,
-      regret-style learning on `bts map` selections. Each lands as a small verb, not a
-      new subsystem.
+      Shared .bts.toml profiles (bts config), bts compress verb shelling sqz,
+      regret-learning score adjustments in bts-map. Shipped 2026-06-18.
     acceptance: "n/a — backlog."
+
+  - id: e08
+    title: "Agent behavioral integration — rtk wrappers + bts wire overhaul + agent-composable verbs"
+    milestone: m4
+    size: M
+    wsjf: 6.0
+    status: pending
+    capsule: specs/epics/e08-agent-wiring.yaml
+    description: >
+      Five-story epic closing the adoption gap: toolchain installed but behaviorally
+      inert across all 5 tested agents. Three targeted fixes: (1) rtk wrapper scripts
+      in ~/.local/bin/ make rtk the transparent default for noisy commands regardless
+      of invocation mode; (2) bts wire becomes a HARD GATE injected at line 1, not
+      a footnote; (3) bts find gains TTY detection + bts grep verb so headless agents
+      don't hang or reach for raw grep.
+    build_order:
+      - id: e08s01
+        title: "bts init writes rtk wrapper scripts to ~/.local/bin/"
+        rationale: "Foundation — s02 is dead code without the wrappers"
+      - id: e08s02
+        title: "bts init prepends ~/.local/bin to PATH in .envrc"
+        rationale: "Paired with s01; wrappers silently lose the PATH race without this"
+      - id: e08s04
+        title: "bts find TTY detection + bts grep verb"
+        rationale: "bts grep must exist before s03 puts it in the decision table"
+      - id: e08s03
+        title: "bts wire: hard-gate sentinel at line 1 + decision table"
+        rationale: "References bts grep (s04) and rtk wrappers (s01/s02); build last of the trio"
+      - id: e08s05
+        title: "bts doctor emits per-tool actionable fix commands"
+        rationale: "Standalone polish; no other story depends on it"
+    acceptance: >
+      bash -c 'bts find <pattern>' completes in <3s; bts wire injects a HARD GATE at
+      line 1; bts doctor MISSING lines include '— fix: <exact command>'; bts init
+      writes executable wrapper scripts to ~/.local/bin/.

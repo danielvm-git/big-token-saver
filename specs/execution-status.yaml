@@ -1,5 +1,5 @@
 # done/pending per story — bigpowers cockpit
-# Updated: 2026-06-18 (e07 COMPLETE: profiles + compress + regret learning)
+# Updated: 2026-06-28 (e08 REGISTERED: agent behavioral integration)
 type: feat
 context: infra
 updated: "2026-06-18"
@@ -36,16 +36,21 @@ epics:
       - crates/bts-map/src/main.rs (main loop: walkdir + feedback wired)
       - crates/bts-map/src/graph.rs (rank_files accepts Option<&FeedbackDb>)
       - crates/bts-map/Cargo.toml (walkdir, serde, serde_json deps)
+  e08:                       # Agent behavioral integration — COMPLETE 2026-06-28
+    status: done
+    stories: { e08s01: done, e08s02: done, e08s03: done, e08s04: done, e08s05: done }
 
 summary:
-  total_stories: 16
-  done: 16
+  total_stories: 21
+  done: 21
   pending: 0
   backlog: 0
 
-# v0.3.0 — e06 COMPLETE (npm distribution shipped).
-# Features:
-#   1. Shared .bts.toml profiles: bts config [show|get|set|init]
-#   2. bts compress: shells sqz with opinionated defaults
-#   3. bts map regret learning: feedback-driven PageRank adjustment
-next: survey-context
+# v0.3.0 — e07 COMPLETE (npm distribution shipped).
+# e08 — agent behavioral integration (REGISTERED 2026-06-28):
+#   1. rtk wrapper scripts in ~/.local/bin/ (two-tier: scripts + aliases)
+#   2. PATH ordering guard in .envrc
+#   3. bts wire hard-gate at line 1 + decision table + new sentinel
+#   4. bts find TTY detection + bts grep verb
+#   5. bts doctor actionable per-tool fix commands
+next: plan-release  # all epics done; next milestone = v0.4.0 release-branch
