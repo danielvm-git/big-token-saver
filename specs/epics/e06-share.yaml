@@ -19,3 +19,17 @@ stories:
     tasks:
       - desc: "MANUAL/CI: `bash install.sh` then `mise run doctor` is green on fresh Linux"
         verify: "echo 'manual: run in a clean Linux container; see e06s01 CI'"
+
+  - id: e06s03
+    title: "npm distribution — global install + npx zero-install"
+    wsjf: 3.7
+    wsjf_rationale: "BV=5 (npm is default JS/TS dev manager), TC=3 (flexible; curl|bash already works), RR=3 (npx enables frictionless PATH-free use), JS=3 (2-3 days)"
+    tasks:
+      - desc: "package.json with bin entry pointing to bts dispatcher; prebuild bts-map binaries per platform via optionalDependencies (esbuild-style pattern)"
+        verify: "npm pack --dry-run lists bin/bts + platform-specific bts-map binary"
+      - desc: "npm publish workflow wired into CI (.github/workflows/release.yml); gh release triggers npm publish"
+        verify: "grep -q 'npm publish' .github/workflows/release.yml"
+      - desc: "global install works: npm install -g big-token-saver then bts map --budget 64 . produces a ranked map"
+        verify: "npm install -g . && bts map --budget 64 . | head -3 | grep -q 'crates/bts-map'"
+      - desc: "npx zero-install path: npx big-token-saver doctor in a temp dir reports tools or degrades gracefully"
+        verify: "cd $(mktemp -d) && npx big-token-saver doctor 2>&1 | grep -qE '(ok|missing|install)'"

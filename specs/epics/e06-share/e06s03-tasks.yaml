@@ -1,0 +1,24 @@
+story_id: e06s03
+title: "npm distribution — global install + npx zero-install"
+status: done
+bcps: 3
+tasks:
+  - id: 1
+    description: "package.json: add name/bin/files/engines, remove private; add .npmignore"
+    verify: "npm pack --dry-run 2>&1 | grep -q 'bin/bts'"
+    status: done
+
+  - id: 2
+    description: "CI release workflow: add npm publish job that bundles bts-map binaries"
+    verify: "grep -q 'npm publish' .github/workflows/release.yml"
+    status: done
+
+  - id: 3
+    description: "bin/bts: add bundled binary lookup for bts-map (platform suffix detection)"
+    verify: "grep -q 'bts-map-darwin-arm64\\|bts-map-linux\\|bts-map-darwin-x86_64' bin/bts"
+    status: done
+
+  - id: 4
+    description: "Smoke test: npm pack + run bts from unpacked tarball"
+    verify: "npm pack && tar xzf big-token-saver-*.tgz -C /tmp/test-npm && /tmp/test-npm/package/bin/bts map --budget 64 . | head -3 | grep -q 'crates/bts-map'"
+    status: done

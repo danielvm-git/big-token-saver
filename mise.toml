@@ -7,7 +7,7 @@
 [tools]
 # ── shell power-tools (mise registry → aqua/ubi prebuilt binaries) ──
 ripgrep = "latest"
-fd      = "latest"
+"github:sharkdp/fd" = "10.3.0"   # aqua backend lacks darwin/amd64; upstream dropped Intel Mac binaries in v10.4.0
 bat     = "latest"
 eza     = "latest"
 fzf     = "latest"
@@ -42,7 +42,140 @@ BTS_MODEL = "claude-opus-4-8"
 [tasks.doctor]
 description = "Verify the whole toolchain is present"
 run = '''
-for b in rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz; do
+for b in rg fd bat eza fzf jq gh direnv opensrc aider rtk sqz bts; do
   command -v "$b" >/dev/null && echo "ok       $b" || echo "MISSING  $b"
 done
+'''
+
+[tasks.test]
+description = "Run shell dispatcher smoke tests + Rust crate tests"
+run = '''
+set -euo pipefail
+BTS="./bin/bts"
+PASS=0
+FAIL=0
+
+assert_ok() {
+  local desc="$1"; shift
+  if "$@" >/dev/null 2>&1; then
+    echo "ok       $desc"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL     $desc"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+assert_eq() {
+  local desc="$1" expected="$2" actual="$3"
+  if [ "$actual" = "$expected" ]; then
+    echo "ok       $desc"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL     $desc (expected: $expected, got: $actual)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+echo "--- bts shell dispatcher ---"
+
+# compress: --stdin flag (BUG-20260618T044939 regression guard)
+assert_ok "compress --stdin flag accepted" $BTS compress --stdin <<< "test"
+assert_ok "compress --stdin --budget N"    $BTS compress --stdin --budget 512 <<< "test"
+assert_ok "compress --budget N --stdin"    $BTS compress --budget 512 --stdin <<< "test"
+assert_ok "compress pipe without flag"      $BTS compress <<< "test"
+
+# negative: --stdin with missing file should not fail on flag parsing
+output=$($BTS compress --stdin /nonexistent_file 2>&1) || true
+case "$output" in
+  *"MISSING"*) echo "ok       compress --stdin with missing file (MISSING, not flag error)"; PASS=$((PASS + 1)) ;;
+  *"Unknown flag"*) echo "FAIL     compress --stdin with missing file (got flag error)"; FAIL=$((FAIL + 1)) ;;
+  *) echo "FAIL     compress --stdin with missing file (unexpected: $output)"; FAIL=$((FAIL + 1)) ;;
+esac
+
+# negative: usage message documents --stdin flag
+output=$($BTS compress --nonexistent-flag 2>&1) || true
+case "$output" in
+  *"--stdin"*) echo "ok       compress usage message includes --stdin"; PASS=$((PASS + 1)) ;;
+  *) echo "FAIL     compress usage message missing --stdin"; FAIL=$((FAIL + 1)) ;;
+esac
+
+# bts help
+exit_code=0
+$BTS -h >/dev/null 2>&1 || exit_code=$?
+assert_eq "bts -h exits 0" "0" "$exit_code"
+
+# bts version (via bts -V or bts --version)
+exit_code=0
+$BTS --version >/dev/null 2>&1 || exit_code=$?
+assert_eq "bts --version exits 0" "0" "$exit_code"
+
+echo "--- bts-map Rust crate ---"
+cargo test --quiet 2>&1 | tail -5
+
+echo "--- install.sh ---"
+# verify install.sh is shellcheck-clean
+if command -v shellcheck >/dev/null 2>&1; then
+  shellcheck install.sh && echo "ok       install.sh shellcheck" || { echo "FAIL     install.sh shellcheck"; FAIL=$((FAIL + 1)); }
+fi
+# verify install.sh has pipe-mode fallback (fetches mise.toml from repo)
+if grep -q 'REPO_RAW' install.sh && grep -q 'mise doctor' install.sh; then
+  echo "ok       install.sh has pipe-mode fetch + mise doctor"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing pipe-mode fetch or mise doctor"
+  FAIL=$((FAIL + 1))
+fi
+# verify install.sh has invariant assertion (guard against empty config)
+if grep -q 'invariant: manifest must be non-empty' install.sh; then
+  echo "ok       install.sh has empty-config guard"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing empty-config guard"
+  FAIL=$((FAIL + 1))
+fi
+# verify fd uses an explicit backend (not bare name -> aqua, which lacks darwin/amd64)
+if grep -qE '^"?github:sharkdp/fd"?\s*=' mise.toml; then
+  echo "ok       mise.toml fd uses github backend (not bare aqua)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     mise.toml fd missing explicit github backend"
+  FAIL=$((FAIL + 1))
+fi
+# verify fd is pinned to a version (not "latest" which lacks Intel Mac binaries)
+if grep -qE '^"?github:sharkdp/fd"?\s*=\s*"10\.3\.0"' mise.toml; then
+  echo "ok       mise.toml fd pinned to 10.3.0 (last Intel Mac release)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     mise.toml fd not pinned to 10.3.0"
+  FAIL=$((FAIL + 1))
+fi
+# verify install.sh installs bts itself to ~/.local/bin
+if grep -q 'local/bin/bts' install.sh && grep -q 'chmod.*BTS_BIN' install.sh; then
+  echo "ok       install.sh installs bts to ~/.local/bin"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing bts self-install step"
+  FAIL=$((FAIL + 1))
+fi
+# verify install.sh has pipe-mode fetch for bts
+if grep -q 'REPO_RAW/bin/bts' install.sh; then
+  echo "ok       install.sh has bts pipe-mode fetch fallback"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     install.sh missing bts pipe-mode fetch"
+  FAIL=$((FAIL + 1))
+fi
+# verify bts is in doctor check list
+if grep -q 'rg fd bat.*bts' mise.toml; then
+  echo "ok       doctor check includes bts"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL     doctor check missing bts"
+  FAIL=$((FAIL + 1))
+fi
+
+echo ""
+echo "Results: $PASS passed, $FAIL failed"
+[ "$FAIL" -eq 0 ] || exit 1
 '''

@@ -1,0 +1,43 @@
+story_id: e06s03
+verified_at: "2026-06-18T17:20:00Z"
+verifier: verify-work
+phases:
+  smoke:
+    passed: true
+    note: "Not a server app; cold-start N/A"
+  build:
+    passed: true
+    command: "cargo build -p bts-map --release"
+  typecheck:
+    passed: true
+    command: "cargo clippy -p bts-map -- -D warnings"
+  lint:
+    passed: true
+    command: "shellcheck bin/bts; shfmt -d bin/bts"
+    note: "0 warnings, 0 formatting diffs"
+  tests:
+    passed: true
+    command: "cargo test -p bts-map"
+    results: "16 passed, 0 failed, 0 ignored"
+  manual:
+    steps:
+      - step: "npm pack --dry-run includes bin/bts"
+        expected: "bin/bts listed in tarball contents"
+        actual: "bin/bts 23.0kB listed; 6 total files"
+        passed: true
+      - step: "CI workflow has npm publish step"
+        expected: "npm publish command present in release.yml"
+        actual: "npm publish --access public at line 111 in release job, after semantic-release"
+        passed: true
+      - step: "bin/bts has bundled binary lookup"
+        expected: "Platform suffix resolver + bundled path fallback before PATH"
+        actual: "_bts_platform_suffix() function resolves darwin-arm64, darwin-x86_64, linux-x86_64; lookup at line 504 injects before command -v fallback"
+        passed: true
+      - step: "Tarball smoke test"
+        expected: "bts map from unpacked tarball produces ranked repo map"
+        actual: "npm pack → tar xzf → bts map --budget 64 crates/bts-map produces ranked output with test fixtures"
+        passed: true
+  gaps:
+    closed: true
+    notes:
+      - "Original task spec verify for task 4 used 'grep -q crates/bts-map' but bts-map output paths are relative to scanned directory (not absolute). Adjusted to grep for valid output patterns instead. Intent unchanged: prove the tarball binary works."

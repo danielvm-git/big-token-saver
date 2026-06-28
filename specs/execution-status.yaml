@@ -25,8 +25,8 @@ epics:
       snapshot_fail: done    # expected_snapshot.txt absent -> test FAILS with clear instructions
       swift_fork: done       # Tracked with deny.toml + SWIFT-FORK-TRACKING comments (blocked on ts 0.25)
   e06:
-    status: done
-    stories: { e06s01: done, e06s02: done }
+    status: ready
+    stories: { e06s01: done, e06s02: done, e06s03: done }
   e07:
     status: done
     stories: { e07s01: done }
@@ -38,14 +38,14 @@ epics:
       - crates/bts-map/Cargo.toml (walkdir, serde, serde_json deps)
 
 summary:
-  total_stories: 15
-  done: 15
+  total_stories: 16
+  done: 16
   pending: 0
   backlog: 0
 
-# ALL EPICS COMPLETE. v0.2.1 — e07 shipped 2026-06-18.
+# v0.3.0 — e06 COMPLETE (npm distribution shipped).
 # Features:
 #   1. Shared .bts.toml profiles: bts config [show|get|set|init]
 #   2. bts compress: shells sqz with opinionated defaults
 #   3. bts map regret learning: feedback-driven PageRank adjustment
-next: null
+next: survey-context

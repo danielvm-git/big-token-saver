@@ -21,7 +21,7 @@ BTS_FEEDBACK_FILE="${BTS_GLOBAL_DIR}/map-feedback.json"
 # ---------------------------------------------------------------------------
 
 bts_usage() {
-	cat <<'EOF'
+    cat <<'EOF'
 Usage: bts <verb> [args…]
 
 Verbs:
@@ -45,12 +45,12 @@ EOF
 # Guard: check a binary is present; print hint + exit 1 if not.
 # Usage: _require <binary> [<hint>]
 _require() {
-	local bin="${1}"
-	local hint="${2:-run bts doctor to see what is missing}"
-	if ! command -v "${bin}" >/dev/null 2>&1; then
-		echo "MISSING  ${bin} — ${hint}" >&2
-		exit 1
-	fi
+    local bin="${1}"
+    local hint="${2:-run bts doctor to see what is missing}"
+    if ! command -v "${bin}" >/dev/null 2>&1; then
+        echo "MISSING  ${bin} — ${hint}" >&2
+        exit 1
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -61,11 +61,11 @@ _require() {
 # Usage: _load_toml_profile <path>
 # Output: BTS_MODEL="val"\nBTS_TOKEN_BUDGET="val"
 _load_toml_profile() {
-	local toml_file="${1}"
-	[ -f "${toml_file}" ] || return 0
-	# Simple awk-based TOML parser for [bts] section.
-	# Handles: key = "value", key = value, key = 'value'
-	awk '
+    local toml_file="${1}"
+    [ -f "${toml_file}" ] || return 0
+    # Simple awk-based TOML parser for [bts] section.
+    # Handles: key = "value", key = value, key = 'value'
+    awk '
 		$0 ~ /^\[bts\]/ { in_bts=1; next }
 		$0 ~ /^\[/ && in_bts  { in_bts=0; next }
 		in_bts && /^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*=/ {
@@ -88,54 +88,54 @@ _load_toml_profile() {
 # overlaid with project .bts.toml.  Values are emitted as:
 #   KEY (source): value
 _merged_config() {
-	local -A global=()
-	local -A project=()
+    local -A global=()
+    local -A project=()
 
-	# Parse global config into associative array.
-	while IFS='=' read -r k v; do
-		[ -n "${k:-}" ] || continue
-		v="${v//\"/}"  # strip quotes
-		global["${k}"]="${v}"
-	done < <(_load_toml_profile "${BTS_GLOBAL_CONFIG}")
+    # Parse global config into associative array.
+    while IFS='=' read -r k v; do
+        [ -n "${k:-}" ] || continue
+        v="${v//\"/}" # strip quotes
+        global["${k}"]="${v}"
+    done < <(_load_toml_profile "${BTS_GLOBAL_CONFIG}")
 
-	# Parse project config.
-	while IFS='=' read -r k v; do
-		[ -n "${k:-}" ] || continue
-		v="${v//\"/}"
-		project["${k}"]="${v}"
-	done < <(_load_toml_profile ".bts.toml")
+    # Parse project config.
+    while IFS='=' read -r k v; do
+        [ -n "${k:-}" ] || continue
+        v="${v//\"/}"
+        project["${k}"]="${v}"
+    done < <(_load_toml_profile ".bts.toml")
 
-	# Default env values.
-	local -A defaults=(
-		["BTS_MODEL"]="${BTS_MODEL}"
-		["BTS_TOKEN_BUDGET"]="${BTS_TOKEN_BUDGET}"
-	)
+    # Default env values.
+    local -A defaults=(
+        ["BTS_MODEL"]="${BTS_MODEL}"
+        ["BTS_TOKEN_BUDGET"]="${BTS_TOKEN_BUDGET}"
+    )
 
-	# Merge: env < global < project.
-	for key in "${!defaults[@]}"; do
-		local source="env"
-		local value="${defaults[${key}]}"
-		if [[ -n "${global[${key}]+x}" ]]; then
-			source="global"
-			value="${global[${key}]}"
-		fi
-		if [[ -n "${project[${key}]+x}" ]]; then
-			source="project"
-			value="${project[${key}]}"
-		fi
-		printf "%s (%s) = %s\n" "${key}" "${source}" "${value}"
-	done
+    # Merge: env < global < project.
+    for key in "${!defaults[@]}"; do
+        local source="env"
+        local value="${defaults[${key}]}"
+        if [[ -n "${global[${key}]+x}" ]]; then
+            source="global"
+            value="${global[${key}]}"
+        fi
+        if [[ -n "${project[${key}]+x}" ]]; then
+            source="project"
+            value="${project[${key}]}"
+        fi
+        printf "%s (%s) = %s\n" "${key}" "${source}" "${value}"
+    done
 }
 
 # Resolve a single config key (merge order: env < global < project).
 _config_get() {
-	local key="BTS_${1^^}"  # uppercase, BTS_ prefix
-	local key_lower="${1,,}"
+    local key="BTS_${1^^}" # uppercase, BTS_ prefix
+    local key_lower="${1,,}"
 
-	# Check project config first.
-	if [ -f ".bts.toml" ]; then
-		local val
-		val="$(awk -v k="${key_lower}" '
+    # Check project config first.
+    if [ -f ".bts.toml" ]; then
+        local val
+        val="$(awk -v k="${key_lower}" '
 			$0 ~ /^\[bts\]/ { in_bts=1; next }
 			$0 ~ /^\[/ && in_bts { in_bts=0; next }
 			in_bts && $0 ~ "^[[:space:]]*" k "[[:space:]]*=" {
@@ -148,16 +148,16 @@ _config_get() {
 				exit;
 			}
 		' .bts.toml 2>/dev/null)"
-		if [ -n "${val:-}" ]; then
-			echo "${val}"
-			return 0
-		fi
-	fi
+        if [ -n "${val:-}" ]; then
+            echo "${val}"
+            return 0
+        fi
+    fi
 
-	# Check global config.
-	if [ -f "${BTS_GLOBAL_CONFIG}" ]; then
-		local val
-		val="$(awk -v k="${key_lower}" '
+    # Check global config.
+    if [ -f "${BTS_GLOBAL_CONFIG}" ]; then
+        local val
+        val="$(awk -v k="${key_lower}" '
 			$0 ~ /^\[bts\]/ { in_bts=1; next }
 			$0 ~ /^\[/ && in_bts { in_bts=0; next }
 			in_bts && $0 ~ "^[[:space:]]*" k "[[:space:]]*=" {
@@ -170,65 +170,68 @@ _config_get() {
 				exit;
 			}
 		' "${BTS_GLOBAL_CONFIG}" 2>/dev/null)"
-		if [ -n "${val:-}" ]; then
-			echo "${val}"
-			return 0
-		fi
-	fi
+        if [ -n "${val:-}" ]; then
+            echo "${val}"
+            return 0
+        fi
+    fi
 
-	# Fall back to env.
-	echo "${!key:-}"
+    # Fall back to env.
+    echo "${!key:-}"
 }
 
 # Set a key in the project .bts.toml.
 _config_set() {
-	local key="${1}"
-	local value="${2}"
-	local toml=".bts.toml"
+    local key="${1}"
+    local value="${2}"
+    local toml=".bts.toml"
 
-	if [ ! -f "${toml}" ]; then
-		cat >"${toml}" <<EOF
+    if [ ! -f "${toml}" ]; then
+        cat >"${toml}" <<EOF
 [bts]
 model        = "${BTS_MODEL}"
 token_budget = ${BTS_TOKEN_BUDGET}
 EOF
-	fi
+    fi
 
-	# Map key to its TOML key name.
-	local toml_key="${key,,}"
-	case "${toml_key}" in
-		model|token_budget) ;;
-		*) echo "ERROR Unknown config key: ${key}" >&2; return 1 ;;
-	esac
+    # Map key to its TOML key name.
+    local toml_key="${key,,}"
+    case "${toml_key}" in
+    model | token_budget) ;;
+    *)
+        echo "ERROR Unknown config key: ${key}" >&2
+        return 1
+        ;;
+    esac
 
-	# Escape / in value for sed (value may contain / in model strings).
-	local safe_value="${value//\//\\/}"
+    # Escape / in value for sed (value may contain / in model strings).
+    local safe_value="${value//\//\\/}"
 
-	# Use mktemp to write atomically (no stale .bak litter).
-	local tmp
-	tmp="$(mktemp "${toml}.XXXXXX")" || {
-		echo "ERROR: mktemp failed" >&2
-		return 1
-	}
+    # Use mktemp to write atomically (no stale .bak litter).
+    local tmp
+    tmp="$(mktemp "${toml}.XXXXXX")" || {
+        echo "ERROR: mktemp failed" >&2
+        return 1
+    }
 
-	# Update or append the key in the [bts] section.
-	if grep -q "^[[:space:]]*${toml_key}[[:space:]]*=" "${toml}" 2>/dev/null; then
-		# Replace existing key.
-		if [[ "${value}" =~ ^[0-9]+$ ]]; then
-			sed "s/^[[:space:]]*${toml_key}[[:space:]]*=.*/${toml_key} = ${safe_value}/" "${toml}" > "${tmp}"
-		else
-			sed "s/^[[:space:]]*${toml_key}[[:space:]]*=.*/${toml_key} = \"${safe_value}\"/" "${toml}" > "${tmp}"
-		fi
-	else
-		# Append after [bts] line.
-		if [[ "${value}" =~ ^[0-9]+$ ]]; then
-			sed "/^\[bts\]/a ${toml_key} = ${safe_value}" "${toml}" > "${tmp}"
-		else
-			sed "/^\[bts\]/a ${toml_key} = \"${safe_value}\"" "${toml}" > "${tmp}"
-		fi
-	fi
-	mv "${tmp}" "${toml}"
-	echo "✓ set ${toml_key} = ${value} in ${toml}"
+    # Update or append the key in the [bts] section.
+    if grep -q "^[[:space:]]*${toml_key}[[:space:]]*=" "${toml}" 2>/dev/null; then
+        # Replace existing key.
+        if [[ "${value}" =~ ^[0-9]+$ ]]; then
+            sed "s/^[[:space:]]*${toml_key}[[:space:]]*=.*/${toml_key} = ${safe_value}/" "${toml}" >"${tmp}"
+        else
+            sed "s/^[[:space:]]*${toml_key}[[:space:]]*=.*/${toml_key} = \"${safe_value}\"/" "${toml}" >"${tmp}"
+        fi
+    else
+        # Append after [bts] line.
+        if [[ "${value}" =~ ^[0-9]+$ ]]; then
+            sed "/^\[bts\]/a ${toml_key} = ${safe_value}" "${toml}" >"${tmp}"
+        else
+            sed "/^\[bts\]/a ${toml_key} = \"${safe_value}\"" "${toml}" >"${tmp}"
+        fi
+    fi
+    mv "${tmp}" "${toml}"
+    echo "✓ set ${toml_key} = ${value} in ${toml}"
 }
 
 # ---------------------------------------------------------------------------
@@ -236,37 +239,37 @@ EOF
 # ---------------------------------------------------------------------------
 
 bts_setup() {
-	local installer="${HERE}/../install.sh"
-	installer="$(cd "$(dirname "${installer}")" && pwd)/$(basename "${installer}")"
-	if [ ! -f "${installer}" ]; then
-		echo "MISSING  install.sh not found at ${installer}" >&2
-		exit 1
-	fi
-	echo "→ running installer: ${installer}"
-	bash "${installer}"
+    local installer="${HERE}/../install.sh"
+    installer="$(cd "$(dirname "${installer}")" && pwd)/$(basename "${installer}")"
+    if [ ! -f "${installer}" ]; then
+        echo "MISSING  install.sh not found at ${installer}" >&2
+        exit 1
+    fi
+    echo "→ running installer: ${installer}"
+    bash "${installer}"
 }
 
 bts_doctor() {
-	_require mise "install mise first — see https://mise.jdx.dev or run bts setup"
-	echo "→ running mise run doctor…"
-	mise run doctor
+    _require mise "install mise first — see https://mise.jdx.dev or run bts setup"
+    echo "→ running mise run doctor…"
+    mise run doctor
 }
 
 bts_init() {
-	# ── e03s01: scaffold .bts.toml and .envrc, idempotent ──────────────────
-	local toml=".bts.toml"
-	local envrc=".envrc"
+    # ── e03s01: scaffold .bts.toml and .envrc, idempotent ──────────────────
+    local toml=".bts.toml"
+    local envrc=".envrc"
 
-	if [ -f "${toml}" ]; then
-		echo "→ ${toml} exists — skipping"
-	else
-		# Resolve defaults from global config, falling back to env.
-		local model
-		local budget
-		model="$(_config_get model)"
-		budget="$(_config_get token_budget)"
+    if [ -f "${toml}" ]; then
+        echo "→ ${toml} exists — skipping"
+    else
+        # Resolve defaults from global config, falling back to env.
+        local model
+        local budget
+        model="$(_config_get model)"
+        budget="$(_config_get token_budget)"
 
-		cat >"${toml}" <<EOF
+        cat >"${toml}" <<EOF
 # bts project configuration.
 # Overrides global config at ~/.config/bts/config.toml
 # Run:  bts config show    to see the effective merged config
@@ -275,33 +278,33 @@ bts_init() {
 model        = "${model}"
 token_budget = ${budget}
 EOF
-		echo "✓ wrote ${toml} (model=${model}, budget=${budget})"
-	fi
+        echo "✓ wrote ${toml} (model=${model}, budget=${budget})"
+    fi
 
-	if [ -f "${envrc}" ]; then
-		echo "→ ${envrc} exists — skipping"
-	else
-		cat >"${envrc}" <<EOF
+    if [ -f "${envrc}" ]; then
+        echo "→ ${envrc} exists — skipping"
+    else
+        cat >"${envrc}" <<EOF
 export BTS_MODEL="${model}"
 export BTS_TOKEN_BUDGET="${budget}"
 EOF
-		echo "✓ wrote ${envrc}"
-	fi
+        echo "✓ wrote ${envrc}"
+    fi
 
-	# ── e03s02: delegate agent-hook wiring to sqz/rtk — non-fatal ──────────
-	if command -v sqz >/dev/null 2>&1; then
-		echo "→ wiring sqz hooks…"
-		sqz init --only claude --yes || true
-	else
-		echo "MISSING  sqz — run bts doctor to install" >&2
-	fi
+    # ── e03s02: delegate agent-hook wiring to sqz/rtk — non-fatal ──────────
+    if command -v sqz >/dev/null 2>&1; then
+        echo "→ wiring sqz hooks…"
+        sqz init --only claude --yes || true
+    else
+        echo "MISSING  sqz — run bts doctor to install" >&2
+    fi
 
-	if command -v rtk >/dev/null 2>&1; then
-		echo "→ wiring rtk hooks…"
-		rtk init --agent claude --auto-patch || true
-	else
-		echo "MISSING  rtk — run bts doctor to install" >&2
-	fi
+    if command -v rtk >/dev/null 2>&1; then
+        echo "→ wiring rtk hooks…"
+        rtk init --agent claude --auto-patch || true
+    else
+        echo "MISSING  rtk — run bts doctor to install" >&2
+    fi
 }
 
 # ── e07s01: shared .bts.toml profiles ───────────────────────────────────────
@@ -313,33 +316,33 @@ EOF
 #   bts config set KEY VAL  set a project-level config value
 #   bts config init      scaffold global config file
 bts_config() {
-	local sub="${1:-show}"
-	case "${sub}" in
-		show|"")
-			echo "→ Effective configuration (env ← global ← project):"
-			echo ""
-			_merged_config
-			;;
-		get)
-			if [ -z "${2:-}" ]; then
-				echo "Usage: bts config get <key>" >&2
-				exit 1
-			fi
-			_config_get "${2}"
-			;;
-		set)
-			if [ -z "${2:-}" ] || [ -z "${3:-}" ]; then
-				echo "Usage: bts config set <key> <value>" >&2
-				exit 1
-			fi
-			_config_set "${2}" "${3}"
-			;;
-		init)
-			mkdir -p "${BTS_GLOBAL_DIR}"
-			if [ -f "${BTS_GLOBAL_CONFIG}" ]; then
-				echo "→ global config already exists at ${BTS_GLOBAL_CONFIG}"
-			else
-				cat >"${BTS_GLOBAL_CONFIG}" <<EOF
+    local sub="${1:-show}"
+    case "${sub}" in
+    show | "")
+        echo "→ Effective configuration (env ← global ← project):"
+        echo ""
+        _merged_config
+        ;;
+    get)
+        if [ -z "${2:-}" ]; then
+            echo "Usage: bts config get <key>" >&2
+            exit 1
+        fi
+        _config_get "${2}"
+        ;;
+    set)
+        if [ -z "${2:-}" ] || [ -z "${3:-}" ]; then
+            echo "Usage: bts config set <key> <value>" >&2
+            exit 1
+        fi
+        _config_set "${2}" "${3}"
+        ;;
+    init)
+        mkdir -p "${BTS_GLOBAL_DIR}"
+        if [ -f "${BTS_GLOBAL_CONFIG}" ]; then
+            echo "→ global config already exists at ${BTS_GLOBAL_CONFIG}"
+        else
+            cat >"${BTS_GLOBAL_CONFIG}" <<EOF
 # bts global configuration — shared across all projects.
 # Each project may override these in its own .bts.toml.
 # Run:  bts config show    to see the effective (merged) config
@@ -347,75 +350,80 @@ bts_config() {
 model        = "${BTS_MODEL}"
 token_budget = ${BTS_TOKEN_BUDGET}
 EOF
-				echo "✓ wrote ${BTS_GLOBAL_CONFIG}"
-			fi
-			;;
-		*)
-			echo "Usage: bts config [show|get <key>|set <key> <val>|init]" >&2
-			exit 1
-			;;
-	esac
+            echo "✓ wrote ${BTS_GLOBAL_CONFIG}"
+        fi
+        ;;
+    *)
+        echo "Usage: bts config [show|get <key>|set <key> <val>|init]" >&2
+        exit 1
+        ;;
+    esac
 }
 
 # ── e07s01: bts compress — shell the installed sqz ──────────────────────────
 
-# bts compress [--budget N] [file...]
+# bts compress [--stdin] [--budget N] [file...]
 # Wraps sqz (squeeze) with opinionated defaults for AI context compression.
 # If no files, reads from stdin (pipe detection via [ ! -t 0 ]).
+# --stdin is a no-op: pipe detection is automatic; the flag exists only to
+# prevent "Unknown flag" errors when scripts pass it explicitly.
 bts_compress() {
-	local budget=""
-	local files=()
+    local budget=""
+    local files=()
 
-	while [ $# -gt 0 ]; do
-		case "$1" in
-			--budget)
-				budget="${2:-}"
-				shift 2
-				;;
-			--budget=*)
-				budget="${1#*=}"
-				shift
-				;;
-			-*)
-				echo "Unknown flag: $1" >&2
-				echo "Usage: bts compress [--stdin] [--budget N] [file...]" >&2
-				exit 1
-				;;
-			*)
-				files+=("$1")
-				shift
-				;;
-		esac
-	done
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --budget)
+            budget="${2:-}"
+            shift 2
+            ;;
+        --budget=*)
+            budget="${1#*=}"
+            shift
+            ;;
+        --stdin)
+            shift
+            ;;
+        -*)
+            echo "Unknown flag: $1" >&2
+            echo "Usage: bts compress [--stdin] [--budget N] [file...]" >&2
+            exit 1
+            ;;
+        *)
+            files+=("$1")
+            shift
+            ;;
+        esac
+    done
 
-	_require sqz "run bts doctor — sqz is the compression engine (installed via mise/ubi)"
+    _require sqz "run bts doctor — sqz is the compression engine (installed via mise/ubi)"
 
-	# sqz uses its own internal budget/mode (configured via `sqz init`).
-	# The --budget flag here is accepted for config consistency but only
-	# affects the displayed message; sqz decides compression aggressiveness.
-	if [ -z "${budget}" ]; then
-		budget="$(_config_get token_budget)"
-	fi
+    # sqz uses its own internal budget/mode (configured via `sqz init`).
+    # The --budget flag here is accepted for config consistency but only
+    # affects the displayed message; sqz decides compression aggressiveness.
+    if [ -z "${budget}" ]; then
+        budget="$(_config_get token_budget)"
+    fi
 
-	echo "→ compressing with sqz (budget: ${budget} tokens)…" >&2
+    echo "→ compressing with sqz (budget: ${budget} tokens)…" >&2
 
-	if [ "${#files[@]}" -gt 0 ]; then
-		# Compress files (sqz reads text from positional arg, not file path — pipe it).
-		for f in "${files[@]}"; do
-			if [ ! -f "${f}" ]; then
-				echo "MISSING  file not found: ${f}" >&2
-				continue
-			fi
-			sqz compress < "${f}" 2>/dev/null || echo "(sqz failed on ${f})" >&2
-		done
-	elif [ ! -t 0 ]; then
-		# Compress stdin.
-		sqz compress 2>/dev/null || echo "(sqz failed on stdin)" >&2
-	else
-		echo "Usage: bts compress [--stdin] [--budget N] [file...]" >&2
-		echo "       Pipe content or pass files to compress." >&2
-		exit 1
-	fi
+    if [ "${#files[@]}" -gt 0 ]; then
+        # Compress files (sqz reads text from positional arg, not file path — pipe it).
+        for f in "${files[@]}"; do
+            if [ ! -f "${f}" ]; then
+                echo "MISSING  file not found: ${f}" >&2
+                continue
+            fi
+            sqz compress <"${f}" 2>/dev/null || echo "(sqz failed on ${f})" >&2
+        done
+    elif [ ! -t 0 ]; then
+        # Compress stdin.
+        sqz compress 2>/dev/null || echo "(sqz failed on stdin)" >&2
+    else
+        echo "Usage: bts compress [--stdin] [--budget N] [file...]" >&2
+        echo "       Pipe content or pass files to compress." >&2
+        exit 1
+    fi
 }
 
 # ── e07s01: bts map — ranked repo map with regret learning ──────────────────
@@ -424,73 +432,95 @@ bts_compress() {
 # Runs the bts-map Rust binary to generate a ranked repo map.
 # Supports regret learning via bts map feedback.
 bts_map() {
-	local budget=""
-	local path="."
-	local feedback_flag=()
+    local budget=""
+    local path="."
+    local feedback_flag=()
 
-	while [ $# -gt 0 ]; do
-		case "$1" in
-			--budget)
-				budget="${2:-}"
-				shift 2
-				;;
-			--budget=*)
-				budget="${1#*=}"
-				shift
-				;;
-			--feedback)
-				feedback_flag=("--feedback" "${2}")
-				shift 2
-				;;
-			--feedback=*)
-				feedback_flag=("--feedback" "${1#*=}")
-				shift
-				;;
-			-*)
-				echo "Unknown flag: $1" >&2
-				echo "Usage: bts map [--budget N] [--feedback FILE] [path]" >&2
-				exit 1
-				;;
-			*)
-				path="$1"
-				shift
-				;;
-		esac
-	done
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --budget)
+            budget="${2:-}"
+            shift 2
+            ;;
+        --budget=*)
+            budget="${1#*=}"
+            shift
+            ;;
+        --feedback)
+            feedback_flag=("--feedback" "${2}")
+            shift 2
+            ;;
+        --feedback=*)
+            feedback_flag=("--feedback" "${1#*=}")
+            shift
+            ;;
+        -*)
+            echo "Unknown flag: $1" >&2
+            echo "Usage: bts map [--budget N] [--feedback FILE] [path]" >&2
+            exit 1
+            ;;
+        *)
+            path="$1"
+            shift
+            ;;
+        esac
+    done
 
-	if [ -z "${budget}" ]; then
-		budget="$(_config_get token_budget)"
-	fi
+    if [ -z "${budget}" ]; then
+        budget="$(_config_get token_budget)"
+    fi
 
-	# If feedback DB exists and --feedback wasn't passed explicitly, auto-detect.
-	if [ "${#feedback_flag[@]}" -eq 0 ] && [ -f "${BTS_FEEDBACK_FILE}" ]; then
-		feedback_flag=("--feedback" "${BTS_FEEDBACK_FILE}")
-	fi
+    # If feedback DB exists and --feedback wasn't passed explicitly, auto-detect.
+    if [ "${#feedback_flag[@]}" -eq 0 ] && [ -f "${BTS_FEEDBACK_FILE}" ]; then
+        feedback_flag=("--feedback" "${BTS_FEEDBACK_FILE}")
+    fi
 
-	# Locate bts-map binary.
-	local bts_map_bin="${HERE}/../target/release/bts-map"
-	if [ ! -x "${bts_map_bin}" ]; then
-		# Try crate-level build (non-workspace).
-		bts_map_bin="${HERE}/../crates/bts-map/target/release/bts-map"
-	fi
-	if [ ! -x "${bts_map_bin}" ]; then
-		# Try debug build.
-		bts_map_bin="${HERE}/../target/debug/bts-map"
-	fi
-	# Also try mise/cargo path (if installed globally).
-	if [ ! -x "${bts_map_bin}" ]; then
-		bts_map_bin="$(command -v bts-map 2>/dev/null || true)"
-	fi
-	if [ -z "${bts_map_bin}" ] || [ ! -x "${bts_map_bin}" ]; then
-		echo "MISSING  bts-map binary — build it first:" >&2
-		echo "  cd crates/bts-map && cargo build --release" >&2
-		exit 1
-	fi
+    # Resolve platform suffix for bundled npm binaries.
+    # Maps uname -sm to the suffix used in CI artifact names.
+    _bts_platform_suffix() {
+        local os arch
+        os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        arch="$(uname -m)"
+        case "${arch}" in
+        arm64 | aarch64) arch="arm64" ;;
+        x86_64 | amd64) arch="x86_64" ;;
+        esac
+        echo "${os}-${arch}"
+    }
 
-	"${bts_map_bin}" \
-		--budget "${budget}" \
-		"${feedback_flag[@]}" \
-		"${path}"
+    # Locate bts-map binary.
+    local bts_map_bin="${HERE}/../target/release/bts-map"
+    if [ ! -x "${bts_map_bin}" ]; then
+        # Try crate-level build (non-workspace).
+        bts_map_bin="${HERE}/../crates/bts-map/target/release/bts-map"
+    fi
+    if [ ! -x "${bts_map_bin}" ]; then
+        # Try debug build.
+        bts_map_bin="${HERE}/../target/debug/bts-map"
+    fi
+    # Try bundled npm binary (same dir as this script).
+    if [ ! -x "${bts_map_bin}" ]; then
+        local bundle_suffix bundled
+        bundle_suffix="$(_bts_platform_suffix)"
+        bundled="${HERE}/bts-map-${bundle_suffix}"
+        if [ -x "${bundled}" ]; then
+            bts_map_bin="${bundled}"
+        fi
+    fi
+    # Also try mise/cargo path (if installed globally).
+    if [ ! -x "${bts_map_bin}" ]; then
+        bts_map_bin="$(command -v bts-map 2>/dev/null || true)"
+    fi
+    if [ -z "${bts_map_bin}" ] || [ ! -x "${bts_map_bin}" ]; then
+        echo "MISSING  bts-map binary — build it first:" >&2
+        echo "  cd crates/bts-map && cargo build --release" >&2
+        exit 1
+    fi
+
+    "${bts_map_bin}" \
+        --budget "${budget}" \
+        "${feedback_flag[@]}" \
+        "${path}"
 }
 
 # bts map feedback — manage regret-learning feedback.
@@ -500,170 +530,170 @@ bts_map() {
 #   bts map feedback --show             show all feedback
 #   bts map feedback --clear            clear all feedback
 bts_map_feedback() {
-	mkdir -p "${BTS_GLOBAL_DIR}"
+    mkdir -p "${BTS_GLOBAL_DIR}"
 
-	# Initialise empty DB if none exists.
-	if [ ! -f "${BTS_FEEDBACK_FILE}" ]; then
-		echo '{"files":{}}' > "${BTS_FEEDBACK_FILE}"
-	fi
+    # Initialise empty DB if none exists.
+    if [ ! -f "${BTS_FEEDBACK_FILE}" ]; then
+        echo '{"files":{}}' >"${BTS_FEEDBACK_FILE}"
+    fi
 
-	local sub="${1:-}"
-	case "${sub}" in
-		--good)
-			if [ -z "${2:-}" ]; then
-				echo "Usage: bts map feedback --good <file>" >&2
-				exit 1
-			fi
-			_record_feedback "${2}" true
-			;;
-		--bad)
-			if [ -z "${2:-}" ]; then
-				echo "Usage: bts map feedback --bad <file>" >&2
-				exit 1
-			fi
-			_record_feedback "${2}" false
-			;;
-		--show)
-			if command -v jq >/dev/null 2>&1; then
-				jq '.' "${BTS_FEEDBACK_FILE}"
-			else
-				cat "${BTS_FEEDBACK_FILE}"
-			fi
-			;;
-		--clear)
-			echo '{"files":{}}' > "${BTS_FEEDBACK_FILE}"
-			echo "✓ feedback cleared"
-			;;
-		*)
-			echo "Usage: bts map feedback [--good <file>|--bad <file>|--show|--clear]" >&2
-			exit 1
-			;;
-	esac
+    local sub="${1:-}"
+    case "${sub}" in
+    --good)
+        if [ -z "${2:-}" ]; then
+            echo "Usage: bts map feedback --good <file>" >&2
+            exit 1
+        fi
+        _record_feedback "${2}" true
+        ;;
+    --bad)
+        if [ -z "${2:-}" ]; then
+            echo "Usage: bts map feedback --bad <file>" >&2
+            exit 1
+        fi
+        _record_feedback "${2}" false
+        ;;
+    --show)
+        if command -v jq >/dev/null 2>&1; then
+            jq '.' "${BTS_FEEDBACK_FILE}"
+        else
+            cat "${BTS_FEEDBACK_FILE}"
+        fi
+        ;;
+    --clear)
+        echo '{"files":{}}' >"${BTS_FEEDBACK_FILE}"
+        echo "✓ feedback cleared"
+        ;;
+    *)
+        echo "Usage: bts map feedback [--good <file>|--bad <file>|--show|--clear]" >&2
+        exit 1
+        ;;
+    esac
 }
 
 # Record feedback: increment good or bad count for a file.
 _record_feedback() {
-	local fname="${1}"
-	local good="${2}"  # "true" or "false"
+    local fname="${1}"
+    local good="${2}" # "true" or "false"
 
-	# jq is required for feedback recording (JSON merge is non-trivial in shell).
-	if command -v jq >/dev/null 2>&1; then
-		local field
-		if [ "${good}" = "true" ]; then
-			field="good"
-		else
-			field="bad"
-		fi
-		# Use mktemp to avoid clobbering concurrent writes (two processes
-		# get unique tmp files; the last atomic mv wins).
-		local tmp
-		tmp="$(mktemp "${BTS_FEEDBACK_FILE}.XXXXXX")"
-		# If file doesn't exist in DB, initialise its entry.
-		if jq --arg f "${fname}" --arg field "${field}" \
-			'if .files[$f] then
+    # jq is required for feedback recording (JSON merge is non-trivial in shell).
+    if command -v jq >/dev/null 2>&1; then
+        local field
+        if [ "${good}" = "true" ]; then
+            field="good"
+        else
+            field="bad"
+        fi
+        # Use mktemp to avoid clobbering concurrent writes (two processes
+        # get unique tmp files; the last atomic mv wins).
+        local tmp
+        tmp="$(mktemp "${BTS_FEEDBACK_FILE}.XXXXXX")"
+        # If file doesn't exist in DB, initialise its entry.
+        if jq --arg f "${fname}" --arg field "${field}" \
+            'if .files[$f] then
 			   .files[$f][$field] += 1
 			 else
 			   .files[$f] = {good: 0, bad: 0} | .files[$f][$field] = 1
 			 end' \
-			"${BTS_FEEDBACK_FILE}" > "${tmp}"; then
-			mv "${tmp}" "${BTS_FEEDBACK_FILE}"
-		else
-			rm -f "${tmp}"
-			echo "ERROR: jq failed — feedback not recorded" >&2
-			exit 1
-		fi
-	else
-		echo "MISSING  jq — required for feedback recording" >&2
-		exit 1
-	fi
+            "${BTS_FEEDBACK_FILE}" >"${tmp}"; then
+            mv "${tmp}" "${BTS_FEEDBACK_FILE}"
+        else
+            rm -f "${tmp}"
+            echo "ERROR: jq failed — feedback not recorded" >&2
+            exit 1
+        fi
+    else
+        echo "MISSING  jq — required for feedback recording" >&2
+        exit 1
+    fi
 
-	if [ "${good}" = "true" ]; then
-		echo "✓ recorded good feedback for ${fname}"
-	else
-		echo "✓ recorded bad feedback for ${fname}"
-	fi
+    if [ "${good}" = "true" ]; then
+        echo "✓ recorded good feedback for ${fname}"
+    else
+        echo "✓ recorded bad feedback for ${fname}"
+    fi
 }
 
 # bts find — search code with rg; pipe into fzf+bat when interactive.
 bts_find() {
-	local print_mode=0
-	local pattern=""
+    local print_mode=0
+    local pattern=""
 
-	while [ $# -gt 0 ]; do
-		case "$1" in
-		--print)
-			print_mode=1
-			shift
-			;;
-		*)
-			pattern="$1"
-			shift
-			;;
-		esac
-	done
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --print)
+            print_mode=1
+            shift
+            ;;
+        *)
+            pattern="$1"
+            shift
+            ;;
+        esac
+    done
 
-	if [ -z "${pattern}" ]; then
-		echo "Usage: bts find [--print] <pattern>" >&2
-		exit 1
-	fi
+    if [ -z "${pattern}" ]; then
+        echo "Usage: bts find [--print] <pattern>" >&2
+        exit 1
+    fi
 
-	_require rg "run bts doctor — rg (ripgrep) is required for bts find"
+    _require rg "run bts doctor — rg (ripgrep) is required for bts find"
 
-	if [ "${print_mode}" -eq 1 ]; then
-		rg "${pattern}"
-	else
-		_require fzf "run bts doctor — fzf is required for interactive bts find"
-		_require bat "run bts doctor — bat is required for bts find preview"
-		rg --line-number "${pattern}" |
-			fzf --ansi \
-				--delimiter ':' \
-				--preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
-				--preview-window 'right:60%'
-	fi
+    if [ "${print_mode}" -eq 1 ]; then
+        rg "${pattern}"
+    else
+        _require fzf "run bts doctor — fzf is required for interactive bts find"
+        _require bat "run bts doctor — bat is required for bts find preview"
+        rg --line-number "${pattern}" |
+            fzf --ansi \
+                --delimiter ':' \
+                --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
+                --preview-window 'right:60%'
+    fi
 }
 
 # bts src <pkg> — print the path to cached source for a package via opensrc.
 bts_src() {
-	local pkg="${1:-}"
-	if [ -z "${pkg}" ]; then
-		echo "Usage: bts src <package>" >&2
-		exit 1
-	fi
-	_require opensrc "run bts doctor — opensrc is required for bts src"
-	opensrc path "${pkg}"
+    local pkg="${1:-}"
+    if [ -z "${pkg}" ]; then
+        echo "Usage: bts src <package>" >&2
+        exit 1
+    fi
+    _require opensrc "run bts doctor — opensrc is required for bts src"
+    opensrc path "${pkg}"
 }
 
 # bts docs [lib] — surface the context7 MCP server config for the active agent.
 bts_docs() {
-	local lib="${1:-}"
-	echo "→ context7 MCP server: @upstash/context7-mcp"
-	echo ""
-	echo "Register with Claude Code (one-time per project):"
-	echo "  claude mcp add context7 -- npx -y @upstash/context7-mcp"
-	echo ""
-	if [ -n "${lib}" ]; then
-		echo "→ Once registered, ask your agent:"
-		echo "  \"use context7 to get the latest docs for ${lib}\""
-	else
-		echo "→ Once registered, ask your agent to use context7 for any library docs."
-	fi
-	echo ""
-	echo "→ To start the MCP server manually:"
-	echo "  npx -y @upstash/context7-mcp"
+    local lib="${1:-}"
+    echo "→ context7 MCP server: @upstash/context7-mcp"
+    echo ""
+    echo "Register with Claude Code (one-time per project):"
+    echo "  claude mcp add context7 -- npx -y @upstash/context7-mcp"
+    echo ""
+    if [ -n "${lib}" ]; then
+        echo "→ Once registered, ask your agent:"
+        echo "  \"use context7 to get the latest docs for ${lib}\""
+    else
+        echo "→ Once registered, ask your agent to use context7 for any library docs."
+    fi
+    echo ""
+    echo "→ To start the MCP server manually:"
+    echo "  npx -y @upstash/context7-mcp"
 }
 
 # bts ai — launch the coding agent with the project model preloaded.
 bts_ai() {
-	if command -v aider >/dev/null 2>&1; then
-		echo "→ launching aider with model ${BTS_MODEL}"
-		aider --model "${BTS_MODEL}" "$@"
-	elif command -v claude >/dev/null 2>&1; then
-		echo "→ aider not found; launching claude"
-		claude "$@"
-	else
-		echo "MISSING  aider (or claude) — run bts doctor to install" >&2
-		exit 1
-	fi
+    if command -v aider >/dev/null 2>&1; then
+        echo "→ launching aider with model ${BTS_MODEL}"
+        aider --model "${BTS_MODEL}" "$@"
+    elif command -v claude >/dev/null 2>&1; then
+        echo "→ aider not found; launching claude"
+        claude "$@"
+    else
+        echo "MISSING  aider (or claude) — run bts doctor to install" >&2
+        exit 1
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -671,70 +701,70 @@ bts_ai() {
 # ---------------------------------------------------------------------------
 
 main() {
-	local verb="${1:-}"
+    local verb="${1:-}"
 
-	case "${verb}" in
-	-h | --help | help | "")
-		bts_usage
-		exit 0
-		;;
-	-V | --version)
-		echo "${BTS_VERSION}"
-		exit 0
-		;;
-	setup)
-		shift
-		bts_setup "$@"
-		;;
-	doctor)
-		shift
-		bts_doctor "$@"
-		;;
-	init)
-		shift
-		bts_init "$@"
-		;;
-	config)
-		shift
-		bts_config "$@"
-		;;
-	find)
-		shift
-		bts_find "$@"
-		;;
-	src)
-		shift
-		bts_src "$@"
-		;;
-	docs)
-		shift
-		bts_docs "$@"
-		;;
-	ai)
-		shift
-		bts_ai "$@"
-		;;
-	compress)
-		shift
-		bts_compress "$@"
-		;;
-	map)
-		shift
-		# If first arg is "feedback", route to the feedback manager.
-		if [ "${1:-}" = "feedback" ]; then
-			shift
-			bts_map_feedback "$@"
-		else
-			bts_map "$@"
-		fi
-		;;
-	*)
-		echo "MISSING  unknown subcommand '${verb}'" >&2
-		echo >&2
-		bts_usage >&2
-		exit 1
-		;;
-	esac
+    case "${verb}" in
+    -h | --help | help | "")
+        bts_usage
+        exit 0
+        ;;
+    -V | --version)
+        echo "${BTS_VERSION}"
+        exit 0
+        ;;
+    setup)
+        shift
+        bts_setup "$@"
+        ;;
+    doctor)
+        shift
+        bts_doctor "$@"
+        ;;
+    init)
+        shift
+        bts_init "$@"
+        ;;
+    config)
+        shift
+        bts_config "$@"
+        ;;
+    find)
+        shift
+        bts_find "$@"
+        ;;
+    src)
+        shift
+        bts_src "$@"
+        ;;
+    docs)
+        shift
+        bts_docs "$@"
+        ;;
+    ai)
+        shift
+        bts_ai "$@"
+        ;;
+    compress)
+        shift
+        bts_compress "$@"
+        ;;
+    map)
+        shift
+        # If first arg is "feedback", route to the feedback manager.
+        if [ "${1:-}" = "feedback" ]; then
+            shift
+            bts_map_feedback "$@"
+        else
+            bts_map "$@"
+        fi
+        ;;
+    *)
+        echo "MISSING  unknown subcommand '${verb}'" >&2
+        echo >&2
+        bts_usage >&2
+        exit 1
+        ;;
+    esac
 }
 
 main "$@"

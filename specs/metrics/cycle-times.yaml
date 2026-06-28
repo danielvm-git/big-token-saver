@@ -1,0 +1,8 @@
+# Cycle-time metrics — bigpowers tracking
+# One row per completed story.
+- id: e06s03
+  bcps: 3
+  start: "2026-06-18T11:15:29Z"
+  end: "2026-06-18T17:30:00Z"
+  cycle_minutes: 375
+  bcp_per_hour: 0.48

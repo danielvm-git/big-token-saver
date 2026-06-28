@@ -99,7 +99,9 @@ fn collect_tags(root: &PathBuf, tags: &mut Vec<Tag>) -> Result<()> {
                 .to_str()
                 .map(|name| {
                     // Skip hidden directories and common build/output names.
-                    name.starts_with('.') || EXCLUDED_DIRS.contains(&name)
+                    // Depth guard: never exclude the walk root itself (depth 0),
+                    // otherwise `.` as root path would self-exclude.
+                    (entry.depth() > 0 && name.starts_with('.')) || EXCLUDED_DIRS.contains(&name)
                 })
                 .unwrap_or(false)
     }
@@ -160,6 +162,7 @@ fn collect_tags(root: &PathBuf, tags: &mut Vec<Tag>) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use super::collect_tags;
     use crate::feedback::FeedbackDb;
     use crate::graph::rank_files;
     use crate::render::{count_tokens, render};
@@ -666,5 +669,77 @@ func main() {
              Actual:\n{}",
             output
         );
+    }
+
+    // ── Integration tests for the directory-walk loop ──────────────────
+
+    /// Walking from `.` (the default path) must not self-exclude.
+    #[test]
+    fn walk_from_dot_produces_tags() {
+        let tmp = std::env::temp_dir().join("bts-map-test-walk-dot");
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("main.rs"), "fn main() {}").unwrap();
+
+        let mut tags = Vec::new();
+        collect_tags(&tmp.join("."), &mut tags).unwrap();
+
+        assert!(!tags.is_empty(), "walking '.' should find tags");
+        assert!(
+            tags.iter().any(|t| t.name == "main"),
+            "should find 'main' in main.rs"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// Walking a hidden-named root (e.g., `.hidden-project/`) should still
+    /// scan its contents — only hidden *children* are excluded.
+    #[test]
+    fn walk_from_hidden_root_produces_tags() {
+        let tmp = std::env::temp_dir().join(".bts-map-test-hidden-root");
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("main.rs"), "fn main() {}").unwrap();
+
+        let mut tags = Vec::new();
+        collect_tags(&tmp, &mut tags).unwrap();
+
+        assert!(
+            !tags.is_empty(),
+            "walking a hidden-named root should still find tags"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// Hidden child directories (depth ≥ 1) must remain excluded.
+    #[test]
+    fn hidden_children_are_excluded() {
+        let tmp = std::env::temp_dir().join("bts-map-test-hidden-children");
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("src")).unwrap();
+        std::fs::create_dir_all(tmp.join(".hidden")).unwrap();
+        std::fs::write(tmp.join("src/main.rs"), "fn main() {}").unwrap();
+        std::fs::write(
+            tmp.join(".hidden/should_not_scan.rs"),
+            "fn secret() {}",
+        )
+        .unwrap();
+
+        let mut tags = Vec::new();
+        collect_tags(&tmp, &mut tags).unwrap();
+
+        // Should find main but NOT secret.
+        assert!(
+            tags.iter().any(|t| t.name == "main"),
+            "should find main in src/main.rs"
+        );
+        assert!(
+            !tags.iter().any(|t| t.name == "secret"),
+            ".hidden/should_not_scan.rs should be excluded"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

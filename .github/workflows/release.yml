@@ -16,6 +16,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  packages: write
 
 jobs:
   # ── Cross-compile bts-map for every supported platform ──────────────────
@@ -73,6 +74,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          registry-url: 'https://registry.npmjs.org'
 
       - uses: actions/download-artifact@v4
         with:
@@ -84,7 +86,53 @@ jobs:
           find artifacts -name "*.tar.gz" -exec cp {} release-assets/ \;
           ls -lh release-assets/
 
+      - name: Capture pre-release tag
+        id: pre-tag
+        run: |
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "pre-release tag: ${TAG}"
+
       - name: Semantic Release
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── npm publish: bundle bts-map binaries + publish to npm registry ──
+      - name: Bundle bts-map binaries for npm
+        run: |
+          mkdir -p bin
+          # Extract each platform binary from the downloaded artifacts.
+          for suffix in darwin-arm64 darwin-x86_64 linux-x86_64; do
+            tarball="artifacts/bts-map-${suffix}/bts-map-${suffix}.tar.gz"
+            if [ -f "${tarball}" ]; then
+              tar xzf "${tarball}" -C bin/
+              echo "  bundled bin/bts-map-${suffix}"
+            else
+              echo "  WARNING: bts-map-${suffix} not found — skipping"
+            fi
+          done
+          ls -lh bin/
+
+      - name: Publish to npm
+        run: |
+          # Guard 1: NPM_TOKEN must be configured.
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "NPM_TOKEN not configured — skipping npm publish"
+            exit 0
+          fi
+
+          # Guard 2: only publish if semantic-release just created a new tag.
+          PRE_TAG="${{ steps.pre-tag.outputs.tag }}"
+          POST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          if [ "${PRE_TAG}" = "${POST_TAG}" ]; then
+            echo "No new release (tag unchanged: ${PRE_TAG}) — skipping npm publish"
+            exit 0
+          fi
+
+          VERSION="${POST_TAG#v}"
+          echo "→ Publishing npm package version ${VERSION} (from tag ${POST_TAG})"
+          npm version "${VERSION}" --no-git-tag-version --allow-same-version
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

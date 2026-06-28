@@ -1,0 +1,20 @@
+# Exclude development-only and build artifacts from the npm package.
+# The `files` field in package.json already restricts to bin/ + install.sh + mise.toml,
+# but .npmignore is safer for explicit exclusions.
+
+crates/
+specs/
+target/
+.github/
+vendor/
+tests/
+*.rs
+*.scm
+Cargo.*
+rust-toolchain.toml
+deny.toml
+.gitignore
+.gitattributes
+CLAUDE.md
+CONVENTIONS.md
+README.md

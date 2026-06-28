@@ -1,4 +1,30 @@
 bugs:
+  - bug_id: BUG-20260622T200000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: installer
+    summary: "install.sh does not install bts itself — user has all tools but no bts command"
+    file: specs/bugs/BUG-20260622T200000-install-bts.md
+    status: fixed
+    risk_level: low
+    approach: "Add step 5 to install.sh: copy bin/bts to ~/.local/bin/ with pipe-mode fetch fallback. Add bts to doctor check list."
+    hardening: "3 structural assertions: bts install step, pipe-mode fallback, doctor includes bts"
+    commit_message: "feat(installer): install bts itself to ~/.local/bin during install.sh"
+    files_changed: ["install.sh", "mise.toml", "specs/bugs/BUG-20260622T200000-install-bts.md", "specs/bugs/registry.yaml"]
+  - bug_id: BUG-20260622T193000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: toolchain
+    summary: "fd install fails on Intel Mac (darwin/amd64) — aqua backend unsupported; upstream sharkdp/fd dropped Intel Mac binaries in v10.4.0"
+    file: specs/bugs/BUG-20260622T193000-fd-intel-mac.md
+    status: fixed
+    risk_level: low
+    approach: "Pin fd to github:sharkdp/fd@10.3.0 — last release with x86_64-apple-darwin binaries. Bare fd=latest resolved to aqua backend which rejects darwin/amd64."
+    hardening: "2 structural assertions in mise run test: fd uses explicit github backend + pinned to 10.3.0"
+    commit_message: "fix(toolchain): pin fd to github:sharkdp/fd@10.3.0 for Intel Mac support"
+    files_changed: ["mise.toml", "specs/bugs/BUG-20260622T193000-fd-intel-mac.md", "specs/bugs/registry.yaml"]
   - bug_id: BUG-20260618
     date: 2026-06-18
     severity: low
@@ -6,3 +32,49 @@ bugs:
     scope: specs
     summary: "Missing type: and context: metadata in e07 spec YAMLs"
     file: specs/bugs/BUG-20260618-spec-metadata.md
+  - bug_id: BUG-20260618T020500
+    date: 2026-06-18
+    severity: medium
+    priority: p2
+    scope: bts-map
+    summary: "bts map returns 'no source files' when run with default '.' path — root excluded by hidden-dir heuristic"
+    file: specs/bugs/BUG-20260618T020500-map-dot-root.md
+    status: fixed
+    risk_level: medium
+    approach: "Add entry.depth() > 0 guard to is_excluded() starts_with('.') check"
+    hardening: "3 new integration tests: walk-from-dot, hidden-root, hidden-children-excluded"
+    commit_message: "fix(bts-map): don't exclude walk root when path is '.'"
+    files_changed: ["crates/bts-map/src/main.rs"]
+  - bug_id: BUG-20260618T044939
+    date: 2026-06-18
+    severity: low
+    priority: p3
+    scope: bts-dispatcher
+    summary: "bts compress --stdin rejects the flag it advertises in usage"
+    file: specs/bugs/BUG-20260618T044939-stdin-flag.md
+    status: fixed
+    risk_level: low
+    approach: "Add --stdin case arm to flag parser"
+    hardening: "mise run test task with 8 smoke tests (3 positive permutations, 2 negative edge cases, 3 baseline)"
+    commit_message: "fix(bts): implement --stdin flag in compress verb (4 commits)"
+    files_changed: ["bin/bts", "mise.toml"]
+  - bug_id: BUG-20260622T180000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: ci
+    summary: "Release workflow always red — npm publish runs unconditionally on every push without auth guard"
+    file: specs/bugs/BUG-20260622T180000-release-red.md
+  - bug_id: BUG-20260622T170000
+    date: 2026-06-22
+    severity: medium
+    priority: p2
+    scope: installer
+    summary: "install.sh fails in curl-pipe mode: cp can't find mise.toml + wrong mise doctor command"
+    file: specs/bugs/BUG-20260622T170000-install-pipe.md
+    status: fixed
+    risk_level: low
+    approach: "Fetch mise.toml from repo when not co-located (pipe mode); use mise doctor instead of mise run doctor"
+    hardening: "Invariant assertion that GLOBAL config is non-empty after copy; structural tests in mise run test (shellcheck + pipe-mode grep + guard grep)"
+    commit_message: "fix(installer): fetch mise.toml from repo in pipe mode, use mise doctor"
+    files_changed: ["install.sh", "mise.toml"]

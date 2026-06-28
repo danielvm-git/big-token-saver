@@ -4,10 +4,10 @@ type: feat
 context: infra
 
 session:
-  phase: SHIP              # m0+m1+m2+m3+m4 COMPLETE; v0.2.1 — all epics done
+  phase: COMPLETE           # ALL EPICS DONE — v0.3.0
   active_epic: null
   active_story: null
-  last_skill: fix-bug          # BUG-20260618 fixed — spec metadata gap resolved
+  last_skill: release-branch  # e06s03 landed on main
   active_flow: null
 
 pivot:
@@ -89,6 +89,18 @@ artifacts:
     - "e07 backlog (COMPLETE 2026-06-18)"             # shared profiles + compress + regret learning
   pending: []
 
+epic_cycle:
+  epic: e06
+  story: e06s03
+  step: 8
+  story_bcps: 3
+
+metrics:
+  story_start: "2026-06-18T11:15:29Z"
+  story_end: "2026-06-18T17:30:00Z"
+  cycle_minutes: 375
+  bcp_per_hour: 0.48
+
 handoff: |
   MILESTONES m0+m1+m2+m3 COMPLETE — v0.2.0 released 2026-06-17.
   - m0 (e01): mise.toml + install.sh — 12/12 tools verified
@@ -97,6 +109,9 @@ handoff: |
   - m3 (e06): release CI builds bts-map for 3 platforms (macOS ARM/Intel, Linux),
     semantic-release attaches binaries to GitHub Release, curl|bash one-liner
     documented, CI install-check job ready for Linux verification.
+  STEP 8 (release-branch) COMPLETE. Merged to main.
+  ALL EPICS DONE. v0.3.0: npm distribution + npx support.
+  Next: survey-context
   SHIPPED:
    - v0.2.0 GitHub Release with 3 binary tarballs:
      bts-map-darwin-arm64.tar.gz  (396 KB)
