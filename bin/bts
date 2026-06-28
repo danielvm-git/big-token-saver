@@ -4,7 +4,7 @@
 # Verbs:  setup  doctor  init  config  find  src  docs  ai  compress  map
 set -euo pipefail
 
-BTS_VERSION="0.2.1"
+BTS_VERSION="0.4.0"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Default values — overridden by env if already set.
@@ -27,10 +27,11 @@ Usage: bts <verb> [args…]
 Verbs:
   setup    Bootstrap the whole toolchain (runs install.sh)
   doctor   Verify every tool is present (runs mise run doctor)
-  init     Per-project wiring: .bts.toml + .envrc + agent hooks
+  init     Per-project wiring: .bts.toml + .envrc + rtk wrappers + agent hooks
   config   Show or manage merged global + project configuration
-  wire     Patch existing agent instruction files with bts usage rules
-  find     Search code: rg → fzf picker (--print for non-interactive)
+  wire     Patch agent instruction files with HARD GATE shell policy at line 1
+  find     Search code: rg → fzf picker (--print or non-TTY for non-interactive)
+  grep     Batch code search via rg (non-interactive; safe for agents)
   src      Print/fetch source for a package via opensrc
   docs     Show/launch the context7 MCP server config for the active agent
   ai       Launch the coding agent with the project model preloaded
@@ -250,10 +251,47 @@ bts_setup() {
     bash "${installer}"
 }
 
+_doctor_fix() {
+    case "${1}" in
+    mise)    echo "curl https://mise.jdx.dev/install.sh | sh" ;;
+    rtk)     echo "mise install  # or: brew install rtk-ai/tap/rtk" ;;
+    sqz)     echo "mise install  # or: brew install ojuschugh1/tap/sqz" ;;
+    bts-map) echo "bts setup" ;;
+    rg)      echo "mise install  # or: brew install ripgrep" ;;
+    fzf)     echo "mise install  # or: brew install fzf" ;;
+    bat)     echo "mise install  # or: brew install bat" ;;
+    yq)      echo "brew install yq" ;;
+    aider)   echo "pipx install aider-chat" ;;
+    jq)      echo "brew install jq" ;;
+    direnv)  echo "brew install direnv" ;;
+    *)       echo "mise install" ;;
+    esac
+}
+
 bts_doctor() {
-    _require mise "install mise first — see https://mise.jdx.dev or run bts setup"
-    echo "→ running mise run doctor…"
-    mise run doctor
+    echo "→ checking toolchain…"
+    local any_missing=0
+    local mise_present=0
+    for tool in mise rtk sqz bts-map rg fzf bat yq aider jq direnv; do
+        if command -v "${tool}" >/dev/null 2>&1; then
+            printf "ok   %s\n" "${tool}"
+            [ "${tool}" = "mise" ] && mise_present=1
+        else
+            printf "MISSING  %s — fix: %s\n" "${tool}" "$(_doctor_fix "${tool}")"
+            any_missing=1
+        fi
+    done
+
+    if [ "${mise_present}" -eq 1 ]; then
+        echo ""
+        echo "→ running mise run doctor…"
+        mise run doctor
+    fi
+
+    if [ "${any_missing}" -eq 1 ]; then
+        echo ""
+        echo "hint: run the fix commands above, then re-run bts doctor to confirm"
+    fi
 }
 
 bts_init() {
@@ -282,14 +320,108 @@ EOF
         echo "✓ wrote ${toml} (model=${model}, budget=${budget})"
     fi
 
+    # ── e08s02: PATH guard — ~/.local/bin must be first ────────────────────
     if [ -f "${envrc}" ]; then
-        echo "→ ${envrc} exists — skipping"
+        if grep -q 'PATH.*\.local/bin' "${envrc}" 2>/dev/null; then
+            echo "→ ${envrc} already has PATH guard — skipping"
+        else
+            # Prepend PATH line before existing content.
+            local tmp
+            tmp="$(mktemp "${envrc}.XXXXXX")"
+            {
+                printf "export PATH=\"%s/.local/bin:\$PATH\"\n" "${HOME}"
+                cat "${envrc}"
+            } >"${tmp}" && mv "${tmp}" "${envrc}"
+            echo "✓ prepended PATH guard to ${envrc}"
+        fi
     else
+        local model
+        local budget
+        model="${model:-$(_config_get model)}"
+        budget="${budget:-$(_config_get token_budget)}"
         cat >"${envrc}" <<EOF
+export PATH="${HOME}/.local/bin:\$PATH"
 export BTS_MODEL="${model}"
 export BTS_TOKEN_BUDGET="${budget}"
 EOF
-        echo "✓ wrote ${envrc}"
+        echo "✓ wrote ${envrc} (PATH guard first)"
+    fi
+
+    # ── e08s01: rtk wrapper scripts in ~/.local/bin/ ────────────────────────
+    if command -v rtk >/dev/null 2>&1; then
+        mkdir -p "${HOME}/.local/bin"
+        local -a SIMPLE_WRAPPERS=(vitest jest pytest npx tsc astro)
+        for cmd in "${SIMPLE_WRAPPERS[@]}"; do
+            local dest="${HOME}/.local/bin/${cmd}"
+            # Idempotent: skip if already written by bts.
+            if [ -f "${dest}" ] && grep -q "exec rtk ${cmd}" "${dest}" 2>/dev/null; then
+                echo "→ ~/.local/bin/${cmd} already set — skipping"
+                continue
+            fi
+            cat >"${dest}" <<EOF
+#!/usr/bin/env bash
+exec rtk ${cmd} "\$@"
+EOF
+            chmod +x "${dest}"
+            echo "✓ wrote ~/.local/bin/${cmd}"
+        done
+
+        # Subcommand-gated cargo wrapper.
+        local cargo_dest="${HOME}/.local/bin/cargo"
+        if [ -f "${cargo_dest}" ] && grep -q 'exec rtk cargo' "${cargo_dest}" 2>/dev/null; then
+            echo "→ ~/.local/bin/cargo already set — skipping"
+        else
+            cat >"${cargo_dest}" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+  test|build|check|clippy|run|bench|doc)
+    exec rtk cargo "$@"
+    ;;
+  *)
+    exec cargo "$@"
+    ;;
+esac
+EOF
+            chmod +x "${cargo_dest}"
+            echo "✓ wrote ~/.local/bin/cargo (subcommand-gated)"
+        fi
+
+        # raw escape hatch.
+        local raw_dest="${HOME}/.local/bin/raw"
+        if [ -f "${raw_dest}" ] && grep -q 'exec rtk proxy' "${raw_dest}" 2>/dev/null; then
+            echo "→ ~/.local/bin/raw already set — skipping"
+        else
+            cat >"${raw_dest}" <<'EOF'
+#!/usr/bin/env bash
+exec rtk proxy "$@"
+EOF
+            chmod +x "${raw_dest}"
+            echo "✓ wrote ~/.local/bin/raw (bypass filter: raw <cmd>)"
+        fi
+
+        # Human-facing aliases for interactive shell use.
+        mkdir -p "${HOME}/.zshrc.d"
+        local aliases_dest="${HOME}/.zshrc.d/bts-aliases"
+        if [ -f "${aliases_dest}" ] && grep -q 'alias vitest' "${aliases_dest}" 2>/dev/null; then
+            echo "→ ~/.zshrc.d/bts-aliases already set — skipping"
+        else
+            cat >"${aliases_dest}" <<'EOF'
+# bts-managed aliases — thin wrappers so interactive shell uses rtk by default.
+# These mirror the wrapper scripts in ~/.local/bin/. Source from ~/.zshrc if needed.
+alias vitest='rtk vitest'
+alias jest='rtk jest'
+alias pytest='rtk pytest'
+alias npx='rtk npx'
+alias tsc='rtk tsc'
+alias astro='rtk astro'
+EOF
+            echo "✓ wrote ~/.zshrc.d/bts-aliases"
+            echo "  hint: add 'source ~/.zshrc.d/bts-aliases' to ~/.zshrc for interactive use"
+        fi
+
+        echo "  hint: bypass rtk filtering with: raw <cmd>   (e.g. raw cargo metadata)"
+    else
+        echo "MISSING  rtk — run bts doctor to install; wrapper scripts skipped" >&2
     fi
 
     # ── e03s02: delegate agent-hook wiring to sqz/rtk — non-fatal ──────────
@@ -615,10 +747,9 @@ _record_feedback() {
     fi
 }
 
-# bts wire — patch existing agent instruction files with bts toolchain rules.
-# Detects CLAUDE.md, GEMINI.md, AGENTS.md, .gemini/GEMINI.md, OPENCODE.md and
-# appends a compact bts usage section to each one found.
-# Idempotent: skips any file that already contains the sentinel heading.
+# bts wire — inject the bts SHELL POLICY block at line 1 of each agent instruction
+# file found. Detects CLAUDE.md, GEMINI.md, AGENTS.md, .gemini/GEMINI.md, OPENCODE.md.
+# Idempotent: skips files already containing the sentinel.
 # Usage: bts wire [--dry-run]
 bts_wire() {
     local dry_run=0
@@ -645,7 +776,9 @@ bts_wire() {
         "OPENCODE.md"
     )
 
-    local sentinel="## bts toolchain"
+    # Sentinel updated from "## bts toolchain" — re-wires files patched with the
+    # old sentinel on the next bts wire run (old sentinel is no longer checked).
+    local sentinel="## ⛔ SHELL POLICY (bts)"
     local patched=0
     local skipped=0
     local missing=0
@@ -662,35 +795,49 @@ bts_wire() {
             continue
         fi
         if [ "${dry_run}" -eq 1 ]; then
-            echo "would patch  ${f}"
+            echo "would patch  ${f} (prepend at line 1)"
             patched=$((patched + 1))
             continue
         fi
-        # Append section with a blank line separator.
-        cat >>"${f}" <<'BTSSECTION'
+        # Prepend the SHELL POLICY block at line 1; original content follows.
+        local tmp
+        tmp="$(mktemp "${f}.XXXXXX")"
+        {
+            cat <<'BTSPOLICY'
+## ⛔ SHELL POLICY (bts)
 
-## bts toolchain
+**MANDATORY** — bts is installed. Use bts verbs and rtk wrappers for ALL shell commands.
 
-`bts` is installed. Prefer its verbs over ad-hoc shell commands.
+Filtering is **active**: `vitest`, `jest`, `pytest`, `cargo test/build/check/clippy/run/bench/doc`,
+`npx`, `tsc`, `astro` output is compressed automatically via rtk wrapper scripts in
+`~/.local/bin/`. You do not need to prefix these — they are already wired.
 
-| Task | Command | Avoid |
-|------|---------|-------|
-| Search code | `bts find --print <pattern>` | grep / find / cat |
-| Interactive search | `bts find <pattern>` | manual grep pipes |
-| Compress for context | `bts compress <file>` or `cmd \| bts compress` | summarising by hand |
-| Repo map | `bts map` | listing files by hand |
-| Library docs | `bts docs <lib>` | guessing from training data |
-| Package source | `bts src <pkg>` | git clone |
-| Toolchain health | `bts doctor` | which / command -v |
+**Escape hatch** — bypass filtering with `raw <cmd>` (routes through `rtk proxy`):
+- `raw cargo metadata`   — structured JSON, must not be filtered
+- `raw vitest --json`    — JSON reporter output
+- `raw tsc --version`    — version check only
 
-**Rules**
-- Search with `bts find` before opening files to locate a symbol or pattern.
-- Pipe anything > 200 lines through `bts compress` before adding to context.
-- Run `bts map` when asked for a repo overview.
-- Use `bts docs <lib>` before answering questions about library APIs.
-- If a tool is missing, say so and run `bts doctor` — do not silently substitute.
-BTSSECTION
-        echo "✓ patched  ${f}"
+**Decision table:**
+
+| Task | Command |
+|------|---------|
+| Code search (batch / agent-safe) | `bts grep <pattern> [path]` |
+| Code search (interactive) | `bts find <pattern>` |
+| Repo overview | `bts map` |
+| Library docs | `bts docs <lib>` |
+| Package source | `bts src <pkg>` |
+| Compress output > 200 lines | `bts compress <file>` or `cmd \| bts compress` |
+| Noisy command (no bts verb) | `rtk <cmd>` |
+| Bypass filter | `raw <cmd>` |
+| Toolchain health | `bts doctor` |
+
+If a tool is MISSING, run `bts doctor` — it prints the exact fix command per tool.
+
+---
+BTSPOLICY
+            cat "${f}"
+        } >"${tmp}" && mv "${tmp}" "${f}"
+        echo "✓ patched  ${f} (SHELL POLICY at line 1)"
         patched=$((patched + 1))
     done
 
@@ -702,9 +849,16 @@ BTSSECTION
 }
 
 # bts find — search code with rg; pipe into fzf+bat when interactive.
+# Auto-switches to print mode when stdout is not a TTY (headless/agent context).
 bts_find() {
     local print_mode=0
     local pattern=""
+    local extra_args=()
+
+    # Auto-detect non-TTY: headless agents pipe stdout — don't launch fzf.
+    if [ ! -t 1 ]; then
+        print_mode=1
+    fi
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -712,31 +866,50 @@ bts_find() {
             print_mode=1
             shift
             ;;
+        -*)
+            extra_args+=("$1")
+            shift
+            ;;
         *)
-            pattern="$1"
+            if [ -z "${pattern}" ]; then
+                pattern="$1"
+            else
+                extra_args+=("$1")
+            fi
             shift
             ;;
         esac
     done
 
     if [ -z "${pattern}" ]; then
-        echo "Usage: bts find [--print] <pattern>" >&2
+        echo "Usage: bts find [--print] <pattern> [path]" >&2
         exit 1
     fi
 
     _require rg "run bts doctor — rg (ripgrep) is required for bts find"
 
     if [ "${print_mode}" -eq 1 ]; then
-        rg "${pattern}"
+        rg "${pattern}" "${extra_args[@]}"
     else
         _require fzf "run bts doctor — fzf is required for interactive bts find"
         _require bat "run bts doctor — bat is required for bts find preview"
-        rg --line-number "${pattern}" |
+        rg --line-number "${pattern}" "${extra_args[@]}" |
             fzf --ansi \
                 --delimiter ':' \
                 --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
                 --preview-window 'right:60%'
     fi
+}
+
+# bts grep — non-interactive batch search (agent-safe alias for bts find --print).
+# Use this instead of bts find when stdout may not be a TTY or you need raw output.
+bts_grep() {
+    if [ -z "${1:-}" ]; then
+        echo "Usage: bts grep <pattern> [path]" >&2
+        exit 1
+    fi
+    _require rg "run bts doctor — rg (ripgrep) is required for bts grep"
+    rg "$@"
 }
 
 # bts src <pkg> — print the path to cached source for a package via opensrc.
@@ -822,6 +995,10 @@ main() {
     find)
         shift
         bts_find "$@"
+        ;;
+    grep)
+        shift
+        bts_grep "$@"
         ;;
     src)
         shift
