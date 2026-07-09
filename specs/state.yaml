@@ -1,5 +1,5 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-06-28 (e08 REGISTERED — agent-wiring epic)
+# Last updated: 2026-07-09 (BUG-20260709 fix_bug in progress)
 type: feat
 context: infra
 
@@ -7,8 +7,13 @@ session:
   phase: COMPLETE
   active_epic: null
   active_story: null
-  last_skill: build-epic
+  last_skill: fix-bug
   active_flow: null
+
+bug_cycle:
+  bug_id: BUG-20260709
+  current_step: 5
+  completed_steps: [1, 2, 3, 4, 5]
 
 epic_cycle:
   epic: e08
