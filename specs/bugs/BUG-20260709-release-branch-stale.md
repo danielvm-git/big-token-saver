@@ -55,3 +55,10 @@ Risk: low. `release/v0.1.0` is stale (2 ahead, 23 behind main). The 2 ahead comm
 - ✅ Default branch is `main`
 
 **Side effect**: The Release workflow no longer has the stale branch constraint. Next release on `main` will proceed normally.
+
+**Orphaned commits (post-deletion verification)**:
+- `afa086c` (`feat(cli): add bts wire #5`) — content independently merged to `main` as `13e4e81`
+- `3d8d5a5` (`fix(cli): restore bts wire verb lost in merge`) — `bts_wire()` present on `main` (enhanced in e08)
+- `65d4faa` — WIP stash; no content value
+
+No data loss. Git GC will clean up in ~90 days.
