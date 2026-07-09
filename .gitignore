@@ -18,6 +18,9 @@ Icon?
 .envrc.local
 .mise.local.toml
 
+# local secrets and env
+.env
+
 # editor cruft
 *.swp
 *~

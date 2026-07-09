@@ -1,5 +1,5 @@
 # bigpowers state — big-token-saver
-# Last updated: 2026-07-09 (BUG-20260709 fix_bug COMPLETE)
+# Last updated: 2026-07-09 (BUG-20260709 RELEASED — all CI green)
 type: feat
 context: infra
 
@@ -7,7 +7,7 @@ session:
   phase: COMPLETE
   active_epic: null
   active_story: null
-  last_skill: fix-bug
+  last_skill: release-branch
   active_flow: null
 
 bug_cycle:
