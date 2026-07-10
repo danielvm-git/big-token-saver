@@ -50,6 +50,7 @@ The project is mostly a manifest + shell, with one small Rust crate. Conventions
 
 ## Git
 
-- Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
+- [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+  Types in use: `feat:`, `fix:`, `ci:`, `docs:`, `chore:`, `refactor:`, `test:`, `build:`, `perf:`.
 - Branch per epic: `e01/installer`, `e02/dispatcher`, `e05/bts-map`.
 - Before merge: `shellcheck` clean; if bts-map touched, `cargo clippy -- -D warnings` + `cargo test`.

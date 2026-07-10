@@ -9,6 +9,7 @@ session:
   active_story: null
   last_skill: release-branch
   active_flow: null
+  workflow_mode: solo-git
 
 bug_cycle:
   bug_id: BUG-20260709
