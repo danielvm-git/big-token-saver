@@ -20,9 +20,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ── Lint and build (fast, always) ────────────────────────────────────────
   lint-build:
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -58,6 +63,7 @@ jobs:
       github.event_name == 'workflow_dispatch'
       && inputs.full-installer-check == true
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 

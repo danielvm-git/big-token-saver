@@ -18,9 +18,14 @@ permissions:
   pull-requests: write
   packages: write
 
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ── Cross-compile bts-map for every supported platform ──────────────────
   build:
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +71,7 @@ jobs:
   release:
     needs: [build]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
