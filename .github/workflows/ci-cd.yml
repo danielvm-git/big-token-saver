@@ -24,14 +24,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ── Stage 1: ci (every push/PR) ──────────────────────────────────────────
 
   shellcheck:
     timeout-minutes: 5
-    concurrency:
-      group: ci-${{ github.ref }}
-      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -50,9 +51,6 @@ jobs:
 
   rust:
     timeout-minutes: 15
-    concurrency:
-      group: ci-${{ github.ref }}
-      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -77,9 +75,6 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch'
       && inputs.full-installer-check == true
-    concurrency:
-      group: ci-${{ github.ref }}
-      cancel-in-progress: true
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -96,9 +91,6 @@ jobs:
   verify:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: [shellcheck, rust]
-    concurrency:
-      group: ci-${{ github.ref }}
-      cancel-in-progress: true
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
@@ -143,7 +135,7 @@ jobs:
     needs: [verify]
     timeout-minutes: 20
     concurrency:
-      group: ci-cd-release-${{ github.ref }}
+      group: deploy-${{ github.ref }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
@@ -191,7 +183,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
-      group: ci-cd-release-${{ github.ref }}
+      group: deploy-${{ github.ref }}
       cancel-in-progress: false
     permissions:
       contents: write
