@@ -1,6 +1,13 @@
 name: CI/CD
-# 3-stage pipeline: ci → verify → deploy
+# Unified 3-stage pipeline replacing ci.yml + release.yml.
 # Based on .github/workflow-templates/ci-cd-monorepo.yml
+#
+# Stage 1: ci      — shellcheck, rust (build/clippy/test), install-check
+# Stage 2: verify   — conventional commits, no AI attribution
+# Stage 3: deploy   — cross-compile bts-map, semantic-release, npm publish
+#
+# Deploy uses a separate concurrency group (cancel-in-progress: false) to
+# protect in-flight releases from being killed by new pushes.
 
 on:
   push:
