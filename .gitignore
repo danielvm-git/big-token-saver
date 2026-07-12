@@ -35,5 +35,9 @@ Icon?
 # logs
 *.log
 
+# AI agent session data
+.mimocode/
+.claude/
+
 # transient artifacts
 diff.txt
