@@ -7,7 +7,9 @@ name: CI/CD
 # Stage 3: deploy   — cross-compile bts-map, semantic-release, npm publish
 #
 # Deploy uses a separate concurrency group (cancel-in-progress: false) to
-# protect in-flight releases from being killed by new pushes.
+# protect in-flight releases from being killed by new pushes. The workflow-
+# level concurrency also uses cancel-in-progress: false because GitHub
+# Actions overrides job-level settings with the workflow-level one.
 
 on:
   push:
@@ -26,7 +28,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # ── Stage 1: ci (every push/PR) ──────────────────────────────────────────
@@ -134,9 +136,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: [verify]
     timeout-minutes: 20
-    concurrency:
-      group: deploy-${{ github.ref }}
-      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
@@ -182,9 +181,6 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: deploy-${{ github.ref }}
-      cancel-in-progress: false
     permissions:
       contents: write
       issues: write
