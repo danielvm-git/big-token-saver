@@ -1,0 +1,80 @@
+name: CI/CD
+# 3-stage pipeline: ci → verify → deploy
+# Based on .github/workflow-templates/ci-cd-monorepo.yml
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full-installer-check:
+        description: "Run full bash install.sh + mise run doctor on Linux"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Stage 1: ci (every push/PR) ──────────────────────────────────────────
+
+  shellcheck:
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck (macOS)
+        if: runner.os == 'macOS'
+        run: brew install shellcheck
+
+      - name: ShellCheck install.sh + bin/bts
+        run: shellcheck install.sh bin/bts
+
+  rust:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build bts-map
+        run: cargo build -p bts-map --release
+
+      - name: Clippy
+        run: cargo clippy -p bts-map -- -D warnings
+
+      - name: Test bts-map
+        run: cargo test -p bts-map
+
+  install-check:
+    if: >
+      github.event_name == 'workflow_dispatch'
+      && inputs.full-installer-check == true
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run full installer
+        run: bash install.sh
+
+      - name: Verify all tools present
+        run: mise run doctor
