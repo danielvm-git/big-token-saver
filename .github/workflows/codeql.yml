@@ -1,0 +1,35 @@
+name: CodeQL
+# Unified CodeQL — scans JavaScript (bin/bts dispatcher).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LANGUAGES: javascript
+
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ env.LANGUAGES }}
+
+      - uses: github/codeql-action/analyze@v3
